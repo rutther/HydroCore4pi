@@ -1,0 +1,14 @@
+# requirements.txt: TODO 列出 Flask, SQLAlchemy, minimalmodbus, APScheduler 等依赖
+
+
+# 生产依赖
+Flask>=2.0,<3.0
+PyMySQL>=1.0
+minimalmodbus>=1.0
+APScheduler>=3.8
+pyserial>=3.4
+cryptography>=41.0
+
+# 测试依赖
+pytest>=6.2
+SQLAlchemy>=1.4
