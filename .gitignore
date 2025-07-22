@@ -1,0 +1,23 @@
+# 虚拟环境和编译缓存
+.venv/
+__pycache__/
+*.py[cod]
+
+# 数据库或临时文件
+*.db
+*.sqlite3
+.mysql/
+
+# 本地日志和环境文件
+nohup.out
+.env
+*.log
+
+# IDE 项目文件
+.vscode/
+.idea/
+
+# 大文件包或依赖
+vendor/
+*.tar.gz
+*.tar.xz
