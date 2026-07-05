@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Action Config Preview</title>
+
+  <link rel="stylesheet" href="/ui/styles/tokens.css" />
+  <link rel="stylesheet" href="/ui/styles/layout.css" />
+  <link rel="stylesheet" href="/ui/styles/components.css" />
+  <link rel="stylesheet" href="/ui/styles/app.css" />
+  <link rel="stylesheet" href="/ui/styles/pages/action_config.css" />
+  <link id="themeStylesheet" rel="stylesheet" href="/ui/styles/themes/green-cyber.css" />
+</head>
+<body>
+  <div style="max-width:1280px;margin:0 auto;padding:20px;">
+    <div id="actionConfigRoot"></div>
+  </div>
+
+  <script type="module">
+    import { initActionConfig } from "/ui/js/pages/action_config/index.js";
+
+    initActionConfig().catch(err => {
+      console.error(err);
+      document.getElementById("actionConfigRoot").innerHTML =
+        '<div class="empty-hint">启动失败：' + String(err) + '</div>';
+    });
+  </script>
+</body>
+</html>

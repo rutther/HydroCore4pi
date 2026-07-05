@@ -1,0 +1,7 @@
+{
+  "automation_enabled": false,
+  "dry_run": true,
+  "hardware_armed": false,
+  "tick_sec": 2,
+  "fresh_data_sec": 180
+}

@@ -1,0 +1,25 @@
+{
+  "id": "task_drain_20s",
+  "name": "排水 20 秒",
+  "enabled": true,
+  "task_type": "sequence",
+  "cooldown_sec": 300,
+  "steps": [
+    {
+      "step_type": "run_action_unit",
+      "action_unit_id": "drain_valve_open",
+      "action_unit_name": "Open drain valve"
+    },
+    {
+      "step_type": "wait",
+      "duration_ms": 20000
+    },
+    {
+      "step_type": "run_action_unit",
+      "action_unit_id": "drain_valve_close",
+      "action_unit_name": "Close drain valve"
+    }
+  ],
+  "summary": "打开排水阀，等待 20 秒后关闭",
+  "description": "用于排水测试或定时排水。"
+}

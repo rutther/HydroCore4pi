@@ -1,0 +1,13 @@
+{
+  "id": "dose_b_3s",
+  "name": "加药泵 B 运行 3 秒",
+  "enabled": true,
+  "output_id": "dose_pump_b",
+  "output_name": "加药泵 B",
+  "mode": "relay_pulse",
+  "params": {
+    "duration_ms": 3000
+  },
+  "summary": "加药泵 B 运行 3 秒",
+  "description": "用于校准或手动修正。"
+}

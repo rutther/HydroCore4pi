@@ -1,0 +1,8 @@
+/* 文件：ui/styles/themes/blue-cyber.css
+ * 职责：覆盖tokens（蓝色赛博）
+ */
+:root{
+  --green:#1aa7ff;
+  --green2:#0b5aa8;
+  --olive:#0f7fb8;
+}

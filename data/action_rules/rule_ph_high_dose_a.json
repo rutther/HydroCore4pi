@@ -1,0 +1,21 @@
+{
+  "id": "rule_ph_high_dose_a",
+  "name": "pH 偏高时加药 A",
+  "enabled": false,
+  "metric_key": "ph",
+  "signal_protocol": "lanchang_ph",
+  "signal_address": 1,
+  "signal_parameter": "measurement",
+  "aggregation": "last",
+  "window_sec": 60,
+  "operator": ">",
+  "threshold": 6.8,
+  "sustain_sec": 30,
+  "task_id": "task_dose_a_3s",
+  "task_name": "加药泵 A 单次加药",
+  "cooldown_sec": 600,
+  "max_runs_per_hour": 4,
+  "requires_fresh_data": true,
+  "summary": "当 pH 连续高于阈值时，执行加药泵 A 单次加药",
+  "description": "示例规则：pH 持续偏高时执行加药。"
+}

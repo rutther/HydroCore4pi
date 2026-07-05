@@ -1,0 +1,13 @@
+{
+  "id": "drain_valve_close",
+  "name": "关闭排水阀",
+  "enabled": true,
+  "output_id": "drain_valve",
+  "output_name": "排水阀",
+  "mode": "relay_state",
+  "params": {
+    "command": "off"
+  },
+  "summary": "关闭排水阀",
+  "description": "关闭排水阀。"
+}

@@ -1,0 +1,146 @@
+<!-- 文件：ui/lab/dashboard.html -->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HydroCore · 数据仪表</title>
+  <link rel="stylesheet" href="/ui/lab/css/dashboard.css" />
+</head>
+
+<body>
+  <div class="stage">
+    <div class="shell">
+
+      <!-- 顶部栏：只保留标题与状态，不放按钮 -->
+      <!-- <div class="topbar">
+        <div class="brand">
+          <div class="brand-title">HydroCore · 数据仪表</div>
+          <div class="brand-sub" id="labStatus">—</div>
+        </div>
+      </div> -->
+
+      <div class="body">
+        <!-- 左侧：Ticker List -->
+        <aside class="left">
+          <div class="left-head">
+            <div class="left-title">指标</div>
+            <div class="mini" id="seriesStatus">—</div>
+          </div>
+
+          <div class="search">
+            <input id="inpSearch" class="input" placeholder="搜索：ph / ec / temp / addr ..." />
+            <button class="btn btn-ghost" id="btnClearSearch" type="button">清空</button>
+          </div>
+
+          <!-- 注释移除（按需求 2） -->
+          <div class="series-list" id="seriesList"></div>
+        </aside>
+
+        <!-- 右侧 -->
+        <main class="main">
+
+          <!-- Controls：三行（模式行 / 调参行 / 动作行） -->
+          <div class="controls">
+
+            <!-- 第1行：模式（最近/回放），两颗可展开药丸，互斥 -->
+            <div class="controls-row mode-row" id="modeSwitch">
+
+              <!-- 最近：默认展开 -->
+              <div class="mode-pill active" id="pillRecent">
+                <button class="pillhead" id="tabRecent" type="button">最近</button>
+                <div class="pillcontent" id="panelRecent" aria-label="最近窗口">
+                  <button class="pillbtn" id="btn1h" type="button">1H</button>
+                  <button class="pillbtn" id="btn3h" type="button">3H</button>
+                  <button class="pillbtn" id="btn12h" type="button">12H</button>
+                  <button class="pillbtn active" id="btn24h" type="button">24H</button>
+                  <button class="pillbtn" id="btn7d" type="button">7D</button>
+                  <button class="pillbtn" id="btn30d" type="button">30D</button>
+                  <button class="pillbtn" id="btn1mo" type="button">1M</button>
+                </div>
+              </div>
+
+              <!-- 回放：默认折叠 -->
+              <div class="mode-pill replay" id="pillReplay">
+                <button class="pillhead pillhead-replay" id="tabReplay" type="button">回放</button>
+                <div class="pillcontent" id="panelReplay" aria-label="回放范围">
+                  <div class="range-item">
+                    <div class="tag">从</div>
+                    <input id="inpFrom" class="input" type="datetime-local" />
+                  </div>
+
+                  <div class="range-item">
+                    <div class="tag">到</div>
+                    <input id="inpTo" class="input" type="datetime-local" />
+                  </div>
+
+                  <button class="btn btn-primary" id="btnApplyReplay" type="button">应用</button>
+
+                  <div class="mini replay-hint" id="replayHint">—</div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- 第2行：调参（精度/模式） -->
+            <div class="controls-row tune-row">
+              <div class="tune">
+                <div class="tag">精度</div>
+                <select id="selGranularity" class="input select">
+                  <option value="auto" selected>自动</option>
+                  <option value="10s">10秒</option>
+                  <option value="1m">1分钟</option>
+                  <option value="10m">10分钟</option>
+                  <option value="1h">1小时</option>
+                  <option value="1d">1天</option>
+                </select>
+              </div>
+
+              <div class="tune">
+                <div class="tag">模式</div>
+                <select id="selAgg" class="input select">
+                  <option value="avg" selected>平均</option>
+                  <option value="min">最小</option>
+                  <option value="max">最大</option>
+                  <option value="last">最后</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 第3行：动作（独占一行，按需求 1） -->
+             <!-- 原版 无全屏按钮版本 -->
+            <!-- <div class="controls-row action-row">
+              <button class="btn" id="btnRefresh" type="button">刷新</button>
+              <button class="btn" id="btnExport" type="button">导出CSV</button>
+              <div style="flex:1;"></div>
+              <div class="mini" id="chartStatus">—</div>
+            </div> -->
+
+
+              <!-- 新增 全屏按钮版本 -->
+            <div class="controls-row action-row">
+              <button class="btn" id="btnRefresh" type="button">刷新</button>
+              <button class="btn" id="btnExport" type="button">导出CSV</button>
+              <button class="btn" id="btnFullscreen" type="button">全屏</button>
+              <div style="flex:1;"></div>
+              <div class="freshness" id="freshnessStatus">—</div>
+              <div class="mini" id="chartStatus">—</div>
+            </div>
+
+          </div>
+
+          <!-- 图表 -->
+          <div class="chart-wrap">
+            <div id="chart" class="chart"></div>
+          </div>
+
+          <!-- 原 status-row 删除：chartStatus 已移入 controls（按需求 1） -->
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <script src="/ui/lab/lib/echarts.min.js"></script>
+  <script type="module" src="/ui/lab/js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "id": "task_dose_a_3s",
+  "name": "加药泵 A 单次加药",
+  "enabled": true,
+  "task_type": "single_action",
+  "cooldown_sec": 30,
+  "steps": [
+    {
+      "step_type": "run_action_unit",
+      "action_unit_id": "dose_a_3s",
+      "action_unit_name": "Dose pump A for 3 s"
+    }
+  ],
+  "summary": "加药泵 A 运行 3 秒",
+  "description": "用于手动加药或自动规则触发。"
+}

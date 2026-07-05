@@ -1,0 +1,101 @@
+{
+  "__meta__": {
+    "align_persist_to_wall": true,
+    "default_persist_sec": 10,
+    "default_round_to": 3,
+    "default_sampling_sec": 3,
+    "max_db_mb": 10240,
+    "retention_days": 400
+  },
+  "plans": [
+    {
+      "address": 10,
+      "parameters": [
+        {
+          "label": "电导率",
+          "name": "ec_value",
+          "unit": "mS/cm"
+        },
+        {
+          "label": "电阻率",
+          "name": "resistivity_value"
+        },
+        {
+          "label": "温度",
+          "name": "temperature",
+          "unit": "°C"
+        },
+        {
+          "label": "TDS",
+          "name": "tds_value",
+          "unit": "mg/L"
+        },
+        {
+          "label": "盐度",
+          "name": "salinity"
+        }
+      ],
+      "persist_sec": 10,
+      "port": "/dev/ttyACM0",
+      "protocol": "lanchang_ec",
+      "sampling_sec": 3
+    },
+    {
+      "address": 9,
+      "parameters": [
+        {
+          "label": "pH",
+          "name": "measurement",
+          "unit": "pH"
+        },
+        {
+          "label": "温度",
+          "name": "temperature",
+          "unit": "°C"
+        },
+        {
+          "label": "电流输出",
+          "name": "current_output",
+          "unit": "mA"
+        },
+        {
+          "agg_mode": "last",
+          "event_only": "nonzero_or_change",
+          "label": "报警",
+          "name": "warning",
+          "round_to": 0,
+          "unit": ""
+        }
+      ],
+      "persist_sec": 10,
+      "port": "/dev/ttyACM0",
+      "protocol": "lanchang_ph",
+      "sampling_sec": 3
+    },
+    {
+      "address": 8,
+      "parameters": [
+        {
+          "__test_value": "0.086067795753479",
+          "label": "腐蚀率",
+          "name": "corrosion_rate",
+          "unit": "mm/a"
+        },
+        {
+          "__test_value": "-14.41294002532959",
+          "label": "电位",
+          "name": "mv_value",
+          "unit": "mV"
+        },
+        {
+          "__test_value": "0",
+          "label": "偏移量",
+          "name": "offset",
+          "unit": ""
+        }
+      ],
+      "port": "/dev/ttyACM0",
+      "protocol": "lanchang_cr_huchen"
+    }
+  ]
+}

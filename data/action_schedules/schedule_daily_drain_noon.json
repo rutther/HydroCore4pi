@@ -1,0 +1,16 @@
+{
+  "id": "schedule_daily_drain_noon",
+  "name": "每日中午排水",
+  "enabled": false,
+  "schedule_type": "daily",
+  "task_id": "task_drain_20s",
+  "task_name": "排水 20 秒",
+  "time_of_day": "12:00",
+  "interval_sec": 0,
+  "start_at": "",
+  "end_at": "",
+  "cooldown_sec": 600,
+  "skip_if_task_running": true,
+  "summary": "每天 12:00 执行排水 20 秒",
+  "description": "示例计划：默认关闭，启用前请确认现场时序。"
+}
