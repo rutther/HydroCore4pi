@@ -101,6 +101,10 @@ def _bytes_file(target: str, data: str | bytes, mode: int = 0o644) -> PackageFil
     return PackageFile(None, _posix(target), mode, data)
 
 
+def _dir_file(target: str, mode: int = 0o755) -> PackageFile:
+    return PackageFile(PROJECT_ROOT, target, mode)
+
+
 def _script_postinst() -> str:
     return r"""#!/bin/sh
 set -e
@@ -297,11 +301,38 @@ def _copy_default_data() -> Iterable[PackageFile]:
     for name in DEFAULT_DATA_DIRS:
         src = data_root / name
         if src.exists():
+            yield _dir_file(f"/usr/share/hydrocore/defaults/data/{name}")
             yield from _iter_tree(src, f"/usr/share/hydrocore/defaults/data/{name}")
 
 
 def _collect_data_files() -> list[PackageFile]:
     files: list[PackageFile] = []
+    files.extend([
+        _dir_file("/opt"),
+        _dir_file("/opt/hydrocore"),
+        _dir_file("/opt/hydrocore/backend"),
+        _dir_file("/opt/hydrocore/ui"),
+        _dir_file("/opt/hydrocore/protocols"),
+        _dir_file("/usr"),
+        _dir_file("/usr/bin"),
+        _dir_file("/usr/share"),
+        _dir_file("/usr/share/hydrocore"),
+        _dir_file("/usr/share/hydrocore/defaults"),
+        _dir_file("/usr/share/hydrocore/defaults/data"),
+        _dir_file("/etc"),
+        _dir_file("/etc/hydrocore"),
+        _dir_file("/etc/chromium"),
+        _dir_file("/etc/chromium/policies"),
+        _dir_file("/etc/chromium/policies/managed"),
+        _dir_file("/etc/chromium-browser"),
+        _dir_file("/etc/chromium-browser/policies"),
+        _dir_file("/etc/chromium-browser/policies/managed"),
+        _dir_file("/etc/systemd"),
+        _dir_file("/etc/systemd/journald.conf.d"),
+        _dir_file("/lib"),
+        _dir_file("/lib/systemd"),
+        _dir_file("/lib/systemd/system"),
+    ])
     files.extend(_iter_tree(PROJECT_ROOT / "backend", "/opt/hydrocore/backend", APP_EXCLUDES))
     files.extend(_iter_tree(PROJECT_ROOT / "ui", "/opt/hydrocore/ui", APP_EXCLUDES))
     files.extend(_iter_tree(PROJECT_ROOT / "protocols", "/opt/hydrocore/protocols", APP_EXCLUDES))
