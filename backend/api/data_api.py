@@ -36,6 +36,14 @@ _BUCKET_SEC = {
 # “日/周/月”桶
 _BUCKET_CAL = {"1d", "1w", "1mo"}
 
+def _bucket_ts_expr(expr: str) -> str:
+    """
+    sensor_data.ts 当前按本地时间字符串入库。
+    SQLite 的 strftime('%s', ts) 会把无时区字符串当 UTC 解释；如果输出时再加
+    localtime，会把分桶标签整体偏移一个本地时区。这里明确不再二次 localtime。
+    """
+    return f"strftime('%Y-%m-%d %H:%M:%S', {expr}, 'unixepoch')"
+
 def _parse_int(s: Optional[str], default: int, lo: int, hi: int) -> int:
     try:
         v = int(s)
@@ -150,7 +158,7 @@ def series():
                              ROW_NUMBER() OVER (PARTITION BY bkt ORDER BY ts DESC) rn
                         FROM src
                     )
-                    SELECT strftime('%Y-%m-%d %H:%M:%S', bkt, 'unixepoch','localtime') AS ts,
+                    SELECT {_bucket_ts_expr("bkt")} AS ts,
                            ROUND(value, ?) AS value
                       FROM rnk WHERE rn=1
                      ORDER BY bkt ASC
@@ -185,7 +193,7 @@ def series():
                       SELECT bkt, MIN(value) AS low, MAX(value) AS high
                         FROM src GROUP BY bkt
                     )
-                    SELECT strftime('%Y-%m-%d %H:%M:%S', o.bkt, 'unixepoch','localtime') AS ts,
+                    SELECT {_bucket_ts_expr("o.bkt")} AS ts,
                            ROUND(o.open,  ?) AS o,
                            ROUND(hl.high, ?) AS h,
                            ROUND(hl.low,  ?) AS l,
@@ -203,8 +211,7 @@ def series():
                 else:
                     # avg/min/max
                     sql = f"""
-                    SELECT strftime('%Y-%m-%d %H:%M:%S',
-                                    (strftime('%s', ts)/?)*?, 'unixepoch','localtime') AS ts,
+                    SELECT {_bucket_ts_expr("(strftime('%s', ts)/?)*?")} AS ts,
                            ROUND({agg}(value), ?) AS value
                       FROM sensor_data
                      WHERE protocol=? AND address=? AND parameter=?
@@ -388,8 +395,7 @@ def export_csv():
                     if bucket in _BUCKET_SEC and agg in ("avg", "min", "max"):
                         bsec = _BUCKET_SEC[bucket]
                         sql = f"""
-                        SELECT strftime('%Y-%m-%d %H:%M:%S',
-                                        (strftime('%s', ts)/?)*?, 'unixepoch','localtime') AS ts,
+                        SELECT {_bucket_ts_expr("(strftime('%s', ts)/?)*?")} AS ts,
                                ROUND({agg}(value), ?) AS value
                           FROM sensor_data
                          WHERE protocol=? AND address=? AND parameter=?

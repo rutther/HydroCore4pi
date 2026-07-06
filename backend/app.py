@@ -5,6 +5,7 @@ from .services.addr_writer_service import start_address_job
 from .services.config_get_service import start_config_get
 from .api.data_api import bp as data_bp
 from .api.meta_api import bp as meta_bp
+from .api.system_api import bp as system_bp
 
 from .api.action_profile_api import bp as action_profile_bp
 from .api.action_api import bp as action_bp
@@ -24,6 +25,8 @@ from .services.poller_guard import (
     PollerRunningError
 )
 from .services.action_scheduler import ensure_automation_thread
+from .utils.json_io import atomic_write_json
+from . import settings
 
 app = Flask(__name__)
 
@@ -38,6 +41,7 @@ UI_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ui")
 
 app.register_blueprint(data_bp)   # 提供 /api/v1/data/...
 app.register_blueprint(meta_bp)   # 提供 /api/v1/meta/... 与 /api/v1/data/range
+app.register_blueprint(system_bp)  # 提供 /api/v1/system/...
 app.register_blueprint(action_profile_bp)  # 提供 /api/v1/action-profile/...
 app.register_blueprint(action_bp)  # 提供 /api/v1/actions/...
 
@@ -188,8 +192,8 @@ def api_config_set():
 import json
 from pathlib import Path
 
-PLAN_FILE = Path(__file__).resolve().parent.parent / "tasks" / "config_poll_plan.json"
-RUNTIME_DIR = Path(__file__).resolve().parent.parent / "data" / "runtime"
+PLAN_FILE = settings.POLL_PLAN_FILE
+RUNTIME_DIR = settings.DATA_DIR / "runtime"
 POLLER_STATE_FILE = RUNTIME_DIR / "poller_state.json"
 _poller_restore_checked = False
 
@@ -203,9 +207,7 @@ def _read_poller_enabled() -> bool:
 
 
 def _write_poller_enabled(enabled: bool) -> None:
-    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
-    with open(POLLER_STATE_FILE, "w", encoding="utf8") as f:
-        json.dump({"enabled": bool(enabled)}, f, ensure_ascii=False, indent=2)
+    atomic_write_json(POLLER_STATE_FILE, {"enabled": bool(enabled)})
 
 
 def _start_poller_thread() -> bool:
@@ -250,8 +252,7 @@ def api_put_poll_plan():
     """
     payload = request.get_json(force=True)
     try:
-        with open(PLAN_FILE, "w", encoding="utf8") as f:
-            json.dump(payload, f, indent=2, ensure_ascii=False)
+        atomic_write_json(PLAN_FILE, payload)
     except Exception as e:
         return {"ok": False, "error": f"写入失败: {e}"}, 500
     return {"ok": True, "message": "已写入，采集器将自动重载"}, 200
@@ -338,9 +339,10 @@ def ui_static(filename):
 
 
 def main():
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    debug = os.environ.get("HYDROCORE_DEBUG", "").lower() in ("1", "true", "yes", "on")
+    if (debug and os.environ.get("WERKZEUG_RUN_MAIN") == "true") or not debug:
         _restore_poller_if_enabled()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host=settings.HOST, port=settings.PORT, debug=debug, use_reloader=debug)
 
 if __name__ == "__main__":
     main()

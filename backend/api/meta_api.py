@@ -1,19 +1,22 @@
 # 文件：backend/api/meta_api.py
 # ...（原有 import 保留）...
 import os, json, datetime
+import time
 from pathlib import Path
 from typing import Dict, Any, List
 from flask import Blueprint, request, jsonify
 from ..db import get_conn
+from ..utils.json_io import atomic_write_json
+from .. import settings
 
 from werkzeug.utils import secure_filename
 from ..services.protocol_loader import list_protocol_files, load_protocol, USER_PROTO_DIR
 
 bp = Blueprint("meta_api", __name__, url_prefix="/api/v1")
 
-ROOT = Path(__file__).resolve().parents[2]  # .../hydrocore3.1/
-PROTO_DIR = ROOT / "protocols"
-PLAN_FILE = ROOT / "tasks" / "config_poll_plan.json"   # ★ 新增：plan 文件路径保持统一
+PROTO_DIR = settings.BUILTIN_PROTOCOL_DIR
+PLAN_FILE = settings.POLL_PLAN_FILE
+_dashboard_state_cache: Dict[str, Any] = {"key": None, "expires_at": 0.0, "payload": None}
 
 # ========= 现有的 meta_series / data_range / meta_protocol 保留，不删 =========
 
@@ -28,12 +31,8 @@ def _load_plan_raw() -> Dict[str, Any] | List[Dict[str, Any]]:
 
 def _load_protocol_json(name: str) -> Dict[str, Any] | None:
     """尝试加载对应协议 json，用于兜底 label/description。失败则返回 None。"""
-    path = PROTO_DIR / f"{name}.json"
-    if not path.exists():
-        return None
     try:
-        with open(path, "r", encoding="utf8") as f:
-            return json.load(f)
+        return load_protocol(name)
     except Exception:
         return None
 
@@ -136,6 +135,19 @@ def meta_plan_view():
                     if isinstance(unit, str):
                         pobj["unit"] = unit
 
+                for meta_key in (
+                    "value_kind",
+                    "delta_mode",
+                    "trend_enabled",
+                    "normal_range",
+                    "can_cross_zero",
+                ):
+                    if meta_key not in pobj and meta_key in fld:
+                        pobj[meta_key] = fld.get(meta_key)
+
+            if pobj.get("event_only") and "value_kind" not in pobj:
+                pobj["value_kind"] = "event"
+
             # 合并（后者覆盖前者）
             merged[key]["parameters"][pname] = {
                 **merged[key]["parameters"].get(pname, {}),
@@ -198,6 +210,249 @@ def meta_series():
              ORDER BY protocol, address, parameter
         """).fetchall()
     return jsonify({"ok": True, "series": [dict(r) for r in rows], "source": "sensor_data", "server_ts": server_ts})
+
+
+def _parse_int_arg(name: str, default: int, lo: int, hi: int) -> int:
+    try:
+        value = int(request.args.get(name, default))
+    except Exception:
+        value = default
+    return max(lo, min(hi, value))
+
+
+def _parse_dt(raw: Any) -> datetime.datetime | None:
+    try:
+        return datetime.datetime.strptime(str(raw), "%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return None
+
+
+def _round_value(value: Any, digits: int) -> float | None:
+    try:
+        return round(float(value), digits)
+    except Exception:
+        return None
+
+
+def _dashboard_plan_items() -> List[Dict[str, Any]]:
+    raw = _load_plan_raw()
+    if isinstance(raw, list):
+        meta = {}
+        plans = raw
+    elif isinstance(raw, dict):
+        meta = raw.get("__meta__", {}) or {}
+        plans = raw.get("plans", [])
+    else:
+        raise ValueError("采集计划格式不正确")
+    if not isinstance(plans, list):
+        raise ValueError("采集计划 plans 字段必须为数组")
+
+    default_round = int(meta.get("default_round_to", 3))
+    proto_cache: Dict[str, Dict[str, Any] | None] = {}
+    seen: set[str] = set()
+    out: List[Dict[str, Any]] = []
+
+    for ent in plans:
+        if not isinstance(ent, dict):
+            continue
+        try:
+            protocol = str(ent["protocol"]).strip()
+            address = int(ent["address"])
+            port = str(ent.get("port") or "").strip()
+        except Exception:
+            continue
+        if not protocol:
+            continue
+
+        if protocol not in proto_cache:
+            proto_cache[protocol] = _load_protocol_json(protocol)
+        proto_json = proto_cache[protocol]
+
+        for raw_param in ent.get("parameters", []):
+            if isinstance(raw_param, str):
+                parameter = raw_param.strip()
+                pobj: Dict[str, Any] = {"name": parameter}
+            elif isinstance(raw_param, dict):
+                parameter = str(raw_param.get("name") or "").strip()
+                pobj = dict(raw_param)
+            else:
+                continue
+            if not parameter:
+                continue
+
+            key = f"{protocol}:{address}:{parameter}"
+            if key in seen:
+                continue
+            seen.add(key)
+
+            pobj.setdefault("round_to", default_round)
+            if "event_only" not in pobj:
+                pobj["event_only"] = None
+
+            fld = proto_json.get(parameter) if isinstance(proto_json, dict) else None
+            if isinstance(fld, dict):
+                if "label" not in pobj and "label_zh" not in pobj:
+                    label = fld.get("label_zh") or fld.get("label") or fld.get("description")
+                    if isinstance(label, str) and label.strip():
+                        pobj["label"] = label
+                if "unit" not in pobj:
+                    unit = fld.get("unit")
+                    if isinstance(unit, str):
+                        pobj["unit"] = unit
+                for meta_key in (
+                    "value_kind",
+                    "delta_mode",
+                    "trend_enabled",
+                    "normal_range",
+                    "can_cross_zero",
+                ):
+                    if meta_key not in pobj and meta_key in fld:
+                        pobj[meta_key] = fld.get(meta_key)
+
+            if pobj.get("event_only") and "value_kind" not in pobj:
+                pobj["value_kind"] = "event"
+
+            value_kind = str(pobj.get("value_kind") or "continuous").strip() or "continuous"
+            delta_mode = str(pobj.get("delta_mode") or ("none" if value_kind in ("event", "state") else "absolute_only")).strip()
+            trend_enabled = bool(pobj.get("trend_enabled", value_kind not in ("event", "state")))
+
+            out.append({
+                "key": key,
+                "protocol": protocol,
+                "address": address,
+                "parameter": parameter,
+                "port": port,
+                "label": str(pobj.get("label_zh") or pobj.get("label") or parameter).strip(),
+                "unit": str(pobj.get("unit") or "").strip(),
+                "round_to": int(pobj.get("round_to", default_round)),
+                "value_kind": value_kind,
+                "delta_mode": delta_mode,
+                "trend_enabled": trend_enabled,
+                "event_only": pobj.get("event_only"),
+                "agg_mode": pobj.get("agg_mode"),
+            })
+    return out
+
+
+@bp.get("/dashboard/state")
+def dashboard_state():
+    """
+    轻量仪表盘状态接口：
+    只围绕当前采集计划中的参数，按复合索引读取最新值和窗口起点值。
+    不拉曲线、不全表分组，供前端自动刷新使用。
+    """
+    window_sec = _parse_int_arg("window_sec", 86400, 60, 604800)
+    fresh_sec = _parse_int_arg("fresh_sec", 180, 10, 86400)
+    cache_sec = _parse_int_arg("cache_sec", 3, 0, 30)
+    cache_key = (window_sec, fresh_sec)
+    now_mono = time.monotonic()
+
+    if cache_sec > 0 and _dashboard_state_cache.get("key") == cache_key and now_mono < float(_dashboard_state_cache.get("expires_at") or 0):
+        cached = dict(_dashboard_state_cache["payload"])
+        cached["cache"] = "hit"
+        return jsonify(cached)
+
+    try:
+        items = _dashboard_plan_items()
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+    with get_conn() as conn:
+        server_ts = conn.execute(
+            "SELECT strftime('%Y-%m-%d %H:%M:%S','now','localtime')"
+        ).fetchone()[0]
+        since_ts = conn.execute(
+            "SELECT strftime('%Y-%m-%d %H:%M:%S','now','localtime', ?)",
+            (f"-{window_sec} seconds",),
+        ).fetchone()[0]
+
+        summary_rows = conn.execute("""
+            SELECT protocol, address, parameter, first_ts, last_ts, n
+              FROM sensor_series_summary
+        """).fetchall()
+        summary_map = {
+            (str(r["protocol"]), int(r["address"]), str(r["parameter"])): dict(r)
+            for r in summary_rows
+        }
+
+        server_dt = _parse_dt(server_ts)
+        for item in items:
+            protocol = item["protocol"]
+            address = int(item["address"])
+            parameter = item["parameter"]
+            rnd = max(0, min(8, int(item.get("round_to", 3))))
+
+            latest = conn.execute("""
+                SELECT ts, value
+                  FROM sensor_data
+                 WHERE protocol=? AND address=? AND parameter=?
+                 ORDER BY ts DESC
+                 LIMIT 1
+            """, (protocol, address, parameter)).fetchone()
+
+            first = conn.execute("""
+                SELECT ts, value
+                  FROM sensor_data
+                 WHERE protocol=? AND address=? AND parameter=?
+                   AND ts >= ? AND ts <= ?
+                 ORDER BY ts ASC
+                 LIMIT 1
+            """, (protocol, address, parameter, since_ts, server_ts)).fetchone()
+
+            latest_ts = latest["ts"] if latest else None
+            latest_value = _round_value(latest["value"], rnd) if latest else None
+            first_ts = first["ts"] if first else None
+            first_value = _round_value(first["value"], rnd) if first else None
+            age_sec = None
+            latest_dt = _parse_dt(latest_ts) if latest_ts else None
+            if server_dt and latest_dt:
+                age_sec = max(0, int((server_dt - latest_dt).total_seconds()))
+
+            if latest_value is None:
+                data_status = "no_data"
+            elif age_sec is not None and age_sec > fresh_sec:
+                data_status = "stale"
+            else:
+                data_status = "fresh"
+
+            delta = None
+            delta_percent = None
+            if item.get("delta_mode") != "none" and latest_value is not None and first_value is not None:
+                delta = round(float(latest_value) - float(first_value), rnd)
+                if item.get("delta_mode") == "absolute_percent" and float(first_value) != 0:
+                    delta_percent = round(delta / float(first_value) * 100.0, 3)
+
+            summary = summary_map.get((protocol, address, parameter), {})
+            item.update({
+                "latest_ts": latest_ts,
+                "latest_value": latest_value,
+                "age_sec": age_sec,
+                "data_status": data_status,
+                "window_first_ts": first_ts,
+                "window_first_value": first_value,
+                "delta": delta,
+                "delta_percent": delta_percent,
+                "summary_first_ts": summary.get("first_ts"),
+                "summary_last_ts": summary.get("last_ts"),
+                "sample_count": summary.get("n"),
+            })
+
+    payload = {
+        "ok": True,
+        "server_ts": server_ts,
+        "window_sec": window_sec,
+        "fresh_sec": fresh_sec,
+        "source": "poll_plan_index_seek",
+        "cache": "miss",
+        "items": items,
+    }
+    if cache_sec > 0:
+        _dashboard_state_cache.update({
+            "key": cache_key,
+            "expires_at": time.monotonic() + cache_sec,
+            "payload": payload,
+        })
+    return jsonify(payload)
 
 # ========= 工具：解析 s=proto:addr:param =========
 def _parse_series_args(args):

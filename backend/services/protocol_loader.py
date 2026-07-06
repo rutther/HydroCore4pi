@@ -8,9 +8,10 @@
 import os, json
 from typing import Dict, List
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-PROTO_DIR = os.path.join(BASE_DIR, "protocols")
-USER_PROTO_DIR = os.path.join(BASE_DIR, "data", "protocols_user")
+from .. import settings
+
+PROTO_DIR = str(settings.BUILTIN_PROTOCOL_DIR)
+USER_PROTO_DIR = str(settings.USER_PROTOCOL_DIR)
 
 
 def _normalize_name(name: str) -> str:

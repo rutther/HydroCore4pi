@@ -3,12 +3,12 @@
 // 目标（产品经理）
 // 0) 回放模式：允许存在时间范围输入（从/到）；最近模式：不出现时间范围输入
 // 1) 左侧 ticker：不管是否选中，都显示当前值；用户看到异常才点进去看曲线
-// 2) 左侧变化值：默认显示 24h Δ 与 %，并明确“24h”
+// 2) 左侧变化值：由 plan_view 元数据 delta_mode 决定是否显示百分比。
 // 3) 左侧宽度已在 CSS 做到 300px
 // 4) 无 checkbox，无“已选中”文案：点击卡片切换选择状态；边框表示选中
-// 5) 单位：先用 JS 内置映射（后续可接 protocols JSON）
+// 5) 单位/名称/参数类型：来自 plan_view；字段名只作最后兜底。
 // 6) 精度（10s/1m/1h...）与模式（平均/最小/最大/最后）必须保留并生效
-// 8) 不显示 lanchang/vendor 等字段：用短标签 PH/EC/Temp/Res + @addr
+// 8) 不显示 lanchang/vendor 等字段：普通界面用 label + @地址。
 // 9) tooltip 不要“（对比 xx）”解释；只显示原值+单位
 // 10) 最近/回放是两个可展开药丸，互斥展开；切模式不需要“返回最近”按钮
 // 11) 不输出“实时/回放”废话提示；只输出操作结果/状态（例如 chartStatus）
@@ -62,10 +62,14 @@ async function apiDataSeries(qs){
   return httpJson(`/api/v1/data/series?${qs}`);
 }
 
+async function apiDashboardState(){
+  return httpJson("/api/v1/dashboard/state?window_sec=86400&cache_sec=3");
+}
+
 /* ===== 色板：稳定映射 ===== */
 const PALETTE = [
-  "#f0b90b", "#0ecb81", "#f6465d", "#4e7fff", "#b277ff",
-  "#ff8f1f", "#00bcd4", "#ff5ac8", "#8bc34a", "#c0c0c0",
+  "#6aa8ff", "#20c7a0", "#b08cff", "#4bc7d9", "#d6a73c",
+  "#8aa0b6", "#7ecb71", "#ef7d8b", "#9bb7ff", "#c8d0da",
 ];
 function stableColor(key){
   let h = 2166136261;
@@ -76,49 +80,55 @@ function stableColor(key){
   return PALETTE[Math.abs(h) % PALETTE.length];
 }
 
-/* ===== 单位：临时内置映射（后续接 protocols JSON） ===== */
-function unitOf(paramLower){
-  if (paramLower.includes("temp")) return "°C";
-  if (paramLower.includes("ph")) return "";             // pH 无单位
-  if (paramLower.includes("conduct")) return "μS/cm";
-  if (paramLower.includes("ec")) return "μS/cm";
-  if (paramLower.includes("tds")) return "ppm";
-  if (paramLower.includes("resist")) return "Ω·cm";
-  if (paramLower.includes("orp")) return "mV";
-  return "";
-}
+const DASH = "--";
 
-/* ===== 短标签：隐藏 protocol/vendor（如 lanchang） ===== */
+/* ===== 参数显示：只使用 plan_view 元数据，字段名只做最后兜底 ===== */
 function parseKey(fullKey){
   // fullKey: protocol:address:parameter
   const parts = String(fullKey || "").split(":");
   const protocol = parts[0] || "";
   const address  = parts[1] || "";
   const parameter = parts.slice(2).join(":") || "";
-  const p = parameter.toLowerCase();
-
-  let short = parameter;
-  if (p.includes("ph")) short = "PH";
-  else if (p.includes("conduct") || p.includes("ec")) short = "EC";
-  else if (p.includes("temp")) short = "Temp";
-  else if (p.includes("resist")) short = "Res";
-  else if (p.includes("orp")) short = "ORP";
-  else if (p.includes("tds")) short = "TDS";
-
   const addrStr = address ? `@${address}` : "";
-  const unit = unitOf(p);
 
   return {
     fullKey,
     protocol,
     address,
     parameter,
-    shortLabel: `${short}${addrStr}`,
-    unit,
+    shortLabel: `${parameter || "参数"}${addrStr}`,
+    unit: "",
   };
 }
 
 function seriesKey(it){ return `${it.protocol}:${it.address}:${it.parameter}`; }
+
+function itemMeta(fullKey){
+  return S.itemByKey ? S.itemByKey.get(fullKey) : null;
+}
+
+function displayNameForKey(fullKey){
+  const it = itemMeta(fullKey);
+  if (it) return it.shortLabel;
+  return parseKey(fullKey).shortLabel;
+}
+
+function unitForKey(fullKey){
+  const it = itemMeta(fullKey);
+  return it?.unit || "";
+}
+
+function normalizeKind(p){
+  if (p?.value_kind) return String(p.value_kind);
+  if (p?.event_only) return "event";
+  return "unknown";
+}
+
+function normalizeDeltaMode(p){
+  const mode = p?.delta_mode == null ? "" : String(p.delta_mode);
+  if (["absolute_percent", "absolute_only", "none"].includes(mode)) return mode;
+  return "none";
+}
 
 function itemFromSeriesRecord(it){
   const fullKey = seriesKey(it);
@@ -134,6 +144,17 @@ function itemFromSeriesRecord(it){
     shortLabel,
     unit,
     searchKey,
+    protocol: it.protocol,
+    address: it.address,
+    parameter: it.parameter,
+    label,
+    valueKind: normalizeKind(it),
+    deltaMode: normalizeDeltaMode(it),
+    eventOnly: it.event_only || null,
+    trendEnabled: it.trend_enabled === false ? false : normalizeKind(it) !== "event",
+    firstTs: it.first_ts || null,
+    lastTs: it.last_ts || null,
+    sampleCount: Number.isFinite(Number(it.n)) ? Number(it.n) : null,
   };
 }
 
@@ -146,13 +167,17 @@ function itemsFromPlanView(plan){
     if (!protocol || address == null) continue;
     for (const p of asArray(ent.parameters)){
       const parameter = p?.name;
-      if (!parameter || p?.event_only === true) continue;
+      if (!parameter) continue;
       const rec = {
         protocol,
         address,
         parameter,
         label: p.label_zh || p.label || p.description || "",
         unit: p.unit || "",
+        event_only: p.event_only || null,
+        value_kind: p.value_kind,
+        delta_mode: p.delta_mode,
+        trend_enabled: p.trend_enabled,
       };
       const key = seriesKey(rec);
       if (seen.has(key)) continue;
@@ -161,6 +186,32 @@ function itemsFromPlanView(plan){
     }
   }
   return out;
+}
+
+function mergeSeriesMeta(items, meta){
+  const byKey = new Map();
+  for (const row of asArray(meta?.series)){
+    const key = seriesKey(row);
+    byKey.set(key, row);
+  }
+  return asArray(items).map(it => {
+    const row = byKey.get(it.fullKey);
+    if (!row) return { ...it, hasSeries: false };
+    return {
+      ...it,
+      hasSeries: true,
+      firstTs: row.first_ts || it.firstTs || null,
+      lastTs: row.last_ts || it.lastTs || null,
+      sampleCount: Number.isFinite(Number(row.n)) ? Number(row.n) : it.sampleCount,
+    };
+  });
+}
+
+function indexItems(items){
+  S.itemByKey = new Map();
+  for (const it of asArray(items)){
+    if (it?.fullKey) S.itemByKey.set(it.fullKey, it);
+  }
 }
 
 /* ===== 精度（bucket） ===== */
@@ -294,7 +345,8 @@ const S = {
   chart: null,
 
   // meta
-  items: [],            // [{ fullKey, shortLabel, unit, searchKey }]
+  items: [],            // [{ fullKey, shortLabel, unit, searchKey, valueKind, deltaMode }]
+  itemByKey: new Map(),
   selected: new Set(),  // fullKey
   pollerRunning: null,
   latestDataTs: null,
@@ -360,9 +412,9 @@ function ensureChart(){
     tooltip:{
       trigger:"axis",
       axisPointer:{ type:"cross" },
-      backgroundColor:"rgba(18,22,28,0.92)",
-      borderColor:"rgba(234,236,239,0.18)",
-      textStyle:{ color:"#eaecef", fontSize:12 },
+      backgroundColor:"rgba(13,18,25,0.94)",
+      borderColor:"rgba(143,158,178,0.24)",
+      textStyle:{ color:"#edf2f7", fontSize:12 },
 
       formatter: (params)=>{
         const arr = asArray(params);
@@ -377,16 +429,15 @@ function ensureChart(){
         const lines = [];
         for (const p of arr){
           const fullKey = p.seriesName || "";
-          const info = parseKey(fullKey);
           const ts = p?.value?.[0];
 
           const m = S.rawMapByKey ? S.rawMapByKey.get(fullKey) : null;
           const raw = (m && typeof ts === "number" && m.has(ts)) ? m.get(ts) : null;
-          const rawStr = (raw==null) ? "—" : String(raw);
-          const unit = info.unit ? ` ${info.unit}` : "";
+          const rawStr = (raw==null) ? DASH : String(raw);
+          const unit = unitForKey(fullKey) ? ` ${unitForKey(fullKey)}` : "";
 
           // 产品经理要求：不要任何“对比值解释”
-          lines.push(`${p.marker} ${info.shortLabel}: ${rawStr}${unit}`);
+          lines.push(`${p.marker} ${displayNameForKey(fullKey)}: ${rawStr}${unit}`);
         }
 
         return [head, ...lines].join("<br/>");
@@ -397,24 +448,24 @@ function ensureChart(){
       top: 2,
       left: 8,
       type: "scroll",
-      textStyle:{ color:"rgba(234,236,239,0.78)", fontSize:12, fontWeight:900 },
-      pageTextStyle:{ color:"rgba(234,236,239,0.60)" },
-      formatter: (name)=> parseKey(name).shortLabel
+      textStyle:{ color:"rgba(226,232,240,0.80)", fontSize:12, fontWeight:900 },
+      pageTextStyle:{ color:"rgba(226,232,240,0.62)" },
+      formatter: (name)=> displayNameForKey(name)
     },
 
     xAxis:{
       type:"time",
-      axisLabel:{ color:"rgba(234,236,239,0.60)" },
-      splitLine:{ lineStyle:{ color:"rgba(234,236,239,0.06)" } },
-      axisLine:{ lineStyle:{ color:"rgba(234,236,239,0.10)" } }
+      axisLabel:{ color:"rgba(226,232,240,0.58)" },
+      splitLine:{ lineStyle:{ color:"rgba(143,158,178,0.10)" } },
+      axisLine:{ lineStyle:{ color:"rgba(143,158,178,0.18)" } }
     },
 
     yAxis:{
       type:"value",
       scale:true,
-      axisLabel:{ color:"rgba(234,236,239,0.60)" },
-      splitLine:{ lineStyle:{ color:"rgba(234,236,239,0.06)" } },
-      axisLine:{ lineStyle:{ color:"rgba(234,236,239,0.10)" } }
+      axisLabel:{ color:"rgba(226,232,240,0.58)" },
+      splitLine:{ lineStyle:{ color:"rgba(143,158,178,0.10)" } },
+      axisLine:{ lineStyle:{ color:"rgba(143,158,178,0.18)" } }
     },
 
     dataZoom:[ { type:"inside", xAxisIndex:0 } ],
@@ -584,7 +635,7 @@ function aggLabel(agg){
 
 function normalizeDashboardCopy(){
   const search = $("inpSearch");
-  if (search) search.placeholder = "搜索指标、地址";
+  if (search) search.placeholder = "搜索参数或地址";
 
   const agg = $("selAgg");
   const aggTag = agg?.parentElement?.querySelector(".tag");
@@ -630,7 +681,7 @@ function renderFreshness(){
 
   const latest = S.latestDataTs;
   if (!latest){
-    setText(el, S.pollerRunning === false ? "采集停止 · 无数据" : "采集状态未知");
+    setText(el, S.pollerRunning === false ? "采集程序停止 · 无入库数据" : "最新入库未知");
     setFreshnessClass("warn");
     return;
   }
@@ -639,18 +690,18 @@ function renderFreshness(){
   const ageMs = nowMs - latest.getTime();
   const age = ageText(ageMs);
   if (S.pollerRunning === false){
-    setText(el, `采集停止 · 最新${age}`);
+    setText(el, `采集程序停止 · 最新入库${age}`);
     setFreshnessClass("bad");
     return;
   }
 
   if (ageMs > 3 * 60 * 1000){
-    setText(el, `采集中 · 数据${age}未更新`);
+    setText(el, `采集程序运行 · 最新入库${age}`);
     setFreshnessClass("warn");
     return;
   }
 
-  setText(el, `采集中 · ${age}`);
+  setText(el, `采集程序运行 · 最新入库${age}`);
   setFreshnessClass("ok");
 }
 
@@ -722,6 +773,42 @@ function filteredItems(){
   return S.items.filter(it => !q || it.searchKey.includes(q));
 }
 
+function shortTime(ts){
+  const d = parseTsSql(ts);
+  if (!d || !Number.isFinite(d.getTime())) return DASH;
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+}
+
+function itemAgeText(it){
+  if (!it?.lastTs) return "无入库";
+  const d = parseTsSql(it.lastTs);
+  const nowMs = S.serverNowTs ? S.serverNowTs.getTime() : Date.now();
+  if (!d || !Number.isFinite(d.getTime())) return "入库时间未知";
+  return `最后入库 ${ageText(nowMs - d.getTime())}`;
+}
+
+function eventValueText(st){
+  if (!st || st.ok !== true || st.latest == null) return "无新事件";
+  const v = Number(st.latest);
+  if (!Number.isFinite(v) || v === 0) return "无新事件";
+  return `事件值 ${v}`;
+}
+
+function formatDelta(st, it){
+  if (!st || st.ok !== true) return { text: DASH, cls: "muted" };
+  if (it.deltaMode === "none") return { text: DASH, cls: "muted" };
+  if (st.delta == null) return { text: DASH, cls: "muted" };
+  const delta = Number(st.delta);
+  if (!Number.isFinite(delta)) return { text: DASH, cls: "muted" };
+  const up = delta >= 0;
+  const sign = up ? "+" : "";
+  let text = `${sign}${delta.toFixed(3)}`;
+  if (it.deltaMode === "absolute_percent" && Number.isFinite(Number(st.pct))){
+    text += ` (${sign}${Number(st.pct).toFixed(2)}%)`;
+  }
+  return { text, cls: up ? "up" : "down" };
+}
+
 function renderList(){
   const wrap = $("seriesList");
   if (!wrap) return;
@@ -779,18 +866,19 @@ function renderList(){
     d.className = "delta";
 
     const st = S.stat24h.get(fullKey);
-    if (!st || st.ok !== true){
-      v.textContent = "—";
+    if (it.valueKind === "event"){
+      v.textContent = eventValueText(st);
       d.classList.add("muted");
-      d.textContent = "—";
+      d.textContent = it.lastTs ? `上次 ${shortTime(it.lastTs)}` : DASH;
+    } else if (!st || st.ok !== true){
+      v.textContent = DASH;
+      d.classList.add("muted");
+      d.textContent = DASH;
     } else {
-      v.textContent = (st.latest == null) ? "—" : String(st.latest);
-
-      const up = st.delta >= 0;
-      d.classList.add(up ? "up" : "down");
-      const sign = up ? "+" : "";
-      const pctStr = (st.pct==null) ? "" : ` (${sign}${st.pct.toFixed(2)}%)`;
-      d.textContent = `${sign}${st.delta.toFixed(3)}${pctStr}`;
+      v.textContent = (st.latest == null) ? DASH : String(st.latest);
+      const delta = formatDelta(st, it);
+      d.classList.add(delta.cls);
+      d.textContent = delta.text;
     }
 
     mid.appendChild(v);
@@ -799,7 +887,9 @@ function renderList(){
 
     const sub = document.createElement("div");
     sub.className = "item-sub";
-    sub.textContent = "24h";
+    if (it.valueKind === "event") sub.textContent = `事件 · ${itemAgeText(it)}`;
+    else if (it.valueKind === "state") sub.textContent = `状态 · ${itemAgeText(it)}`;
+    else sub.textContent = itemAgeText(it);
     card.appendChild(sub);
 
     // 点击卡片切换选中状态
@@ -835,26 +925,40 @@ async function loadMeta(){
   }catch{}
 
   if (!items.length){
-  if (!meta) meta = await apiMetaSeries();
-  if (!meta || meta.ok !== true) throw new Error("meta/series 返回 ok!=true");
+    if (!meta) meta = await apiMetaSeries();
+    if (!meta || meta.ok !== true) throw new Error("meta/series 返回 ok!=true");
 
-  const arr = Array.isArray(meta.series) ? meta.series : [];
-  items = arr.map(it=>{
-    const fullKey = seriesKey(it);
-    const info = parseKey(fullKey);
-    const searchKey = `${info.shortLabel} ${info.parameter} ${info.address}`.toLowerCase();
-    return {
-      fullKey,
-      shortLabel: info.shortLabel,
-      unit: info.unit,
-      searchKey,
-    };
-  });
+    const arr = Array.isArray(meta.series) ? meta.series : [];
+    items = arr.map(it=>{
+      const fullKey = seriesKey(it);
+      const info = parseKey(fullKey);
+      const searchKey = `${info.shortLabel} ${info.parameter} ${info.address}`.toLowerCase();
+      return {
+        fullKey,
+        shortLabel: info.shortLabel,
+        unit: "",
+        searchKey,
+        protocol: it.protocol,
+        address: it.address,
+        parameter: it.parameter,
+        valueKind: "unknown",
+        deltaMode: "none",
+        eventOnly: null,
+        trendEnabled: true,
+        firstTs: it.first_ts || null,
+        lastTs: it.last_ts || null,
+        sampleCount: Number.isFinite(Number(it.n)) ? Number(it.n) : null,
+        hasSeries: true,
+      };
+    });
+  } else if (meta && meta.ok === true){
+    items = mergeSeriesMeta(items, meta);
   }
 
   S.items = items;
+  indexItems(S.items);
 
-  setText($("seriesStatus"), `指标数：${S.items.length}`);
+  setText($("seriesStatus"), `计划参数：${S.items.length}`);
   await refreshFreshnessStatus();
 
   // 默认选第一条，保证图上有内容
@@ -954,21 +1058,69 @@ async function load24hStatsForKeys(keys){
   }
 }
 
-async function refreshLeftStats(){
-  // 防止请求风暴：每轮最多刷新 30 个 + 选中项优先
-  const visible = filteredItems();
+function applyDashboardState(data){
+  if (!data || data.ok !== true) throw new Error("dashboard/state 返回 ok!=true");
+  if (data.server_ts) S.serverNowTs = parseTsSql(data.server_ts);
 
-  const MAX = 30;
-  const keys = [];
+  let latestTs = null;
+  for (const row of asArray(data.items)){
+    const fullKey = row?.key || seriesKey(row || {});
+    if (!fullKey) continue;
 
-  for (const k of S.selected) keys.push(k);
-  for (const it of visible){
-    if (keys.length >= MAX) break;
-    if (!keys.includes(it.fullKey)) keys.push(it.fullKey);
+    const it = S.itemByKey.get(fullKey);
+    if (it){
+      if (row.latest_ts) it.lastTs = row.latest_ts;
+      if (row.summary_first_ts) it.firstTs = row.summary_first_ts;
+      if (row.sample_count != null) it.sampleCount = Number(row.sample_count);
+      if (row.value_kind) it.valueKind = String(row.value_kind);
+      if (row.delta_mode) it.deltaMode = String(row.delta_mode);
+      if (row.trend_enabled != null) it.trendEnabled = !!row.trend_enabled;
+    }
+
+    if (row.latest_ts){
+      const d = parseTsSql(row.latest_ts);
+      if (d && Number.isFinite(d.getTime()) && (!latestTs || d > latestTs)) latestTs = d;
+    }
+
+    const latest = Number(row.latest_value);
+    const delta = Number(row.delta);
+    const pct = Number(row.delta_percent);
+    if (row.latest_value == null || !Number.isFinite(latest)){
+      S.stat24h.set(fullKey, { ok:false, ts:Date.now(), msg:row.data_status || "no-data" });
+    } else {
+      S.stat24h.set(fullKey, {
+        ok:true,
+        latest,
+        delta: Number.isFinite(delta) ? delta : null,
+        pct: Number.isFinite(pct) ? pct : null,
+        ts: Date.now(),
+        dataStatus: row.data_status || "",
+      });
+    }
   }
+  if (latestTs) S.latestDataTs = latestTs;
+}
 
-  await load24hStatsForKeys(keys);
-  renderList();
+async function refreshLeftStats(){
+  try{
+    const data = await apiDashboardState();
+    applyDashboardState(data);
+    renderFreshness();
+    renderList();
+    return;
+  }catch(e){
+    // 兼容旧后端：状态接口不可用时，退回曲线接口计算左侧状态。
+    const visible = filteredItems();
+    const MAX = 30;
+    const keys = [];
+    for (const k of S.selected) keys.push(k);
+    for (const it of visible){
+      if (keys.length >= MAX) break;
+      if (!keys.includes(it.fullKey)) keys.push(it.fullKey);
+    }
+    await load24hStatsForKeys(keys);
+    renderList();
+  }
 }
 
 /* ===== 图表刷新：只拉选中项 ===== */
@@ -1020,13 +1172,13 @@ async function refreshChartOnlyBatch(keys, chart, from, to, bucket, agg){
     showSymbol:false,
     connectNulls:false,
     data: r.dispLine,
-    lineStyle:{ width:1.4, color: stableColor(r.fullKey) },
+    lineStyle:{ width:1.55, color: stableColor(r.fullKey) },
     emphasis:{ focus:"series" },
   }));
 
   chart.setOption(
     {
-      legend:{ data: keys, formatter:(name)=>parseKey(name).shortLabel },
+      legend:{ data: keys, formatter:(name)=>displayNameForKey(name) },
       yAxis:{
         type:"value",
         scale:true,

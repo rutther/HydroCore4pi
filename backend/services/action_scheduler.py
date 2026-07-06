@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from .. import settings
 from ..db import get_conn
+from ..utils.json_io import atomic_write_json
 from .action_executor import execute_action_task
 from .action_store import (
     get_action_rule,
@@ -80,9 +81,7 @@ def is_hardware_armed() -> bool:
 
 def save_automation_config(data: Dict[str, Any]) -> Dict[str, Any]:
     config = normalize_automation_config(data)
-    _ensure_automation_dir()
-    with open(AUTOMATION_FILE, "w", encoding="utf-8") as fh:
-        json.dump(config, fh, indent=2, ensure_ascii=False)
+    atomic_write_json(AUTOMATION_FILE, config)
     return config
 
 

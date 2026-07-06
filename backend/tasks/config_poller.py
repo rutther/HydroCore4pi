@@ -12,11 +12,11 @@ from typing import Dict, Any, List, Tuple, Optional
 
 from ..db import get_conn, init_db
 from ..services.config_get_service import start_config_get
+from .. import settings
 
 # ---------- 路径 ----------
-ROOT = Path(__file__).resolve().parents[2]       # .../hydrocore3.1/
-PLAN_FILE = ROOT / "tasks" / "config_poll_plan.json"
-DB_FILE   = ROOT / "data" / "db" / "hydro.db"
+PLAN_FILE = settings.POLL_PLAN_FILE
+DB_FILE   = settings.DB_FILE
 
 # ---------- 默认策略（可被 __meta__ 覆盖） ----------
 DEFAULT_SAMPLING_SEC     = 3

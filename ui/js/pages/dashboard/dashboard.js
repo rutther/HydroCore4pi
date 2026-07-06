@@ -3,7 +3,7 @@
 // 方案：用 iframe 嵌入一个“独立可访问”的 dashboard 页面，彻底隔离 CSS/JS，避免夺舍
 // 依赖：/ui/lab/dashboard.html 已可独立访问且功能正常
 
-const DASH_URL = "/ui/lab/dashboard.html";
+const DASH_URL = "/ui/lab/dashboard.html?v=dashboard-calendar-lineicon-10";
 
 let mounted = false;
 let iframeEl = null;
@@ -28,7 +28,7 @@ export function initDashboard() {
   iframe.style.width = "100%";
   iframe.style.height = "100%";          // 建议由父容器用 flex/高度撑满
   iframe.style.border = "0";
-  iframe.style.borderRadius = "12px";
+  iframe.style.borderRadius = "0";
   iframe.style.background = "transparent";
 
   // 让 iframe 不抢滚动条（可选，看你页面布局）

@@ -1,4 +1,4 @@
-<!-- 文件：ui/index.html -->
+﻿<!-- 文件：ui/index.html -->
 <!doctype html>
 <html lang="zh-CN">
 <head>
@@ -7,14 +7,15 @@
   <title>HydroCore WebUI</title>
 
   <!-- 视觉tokens（变量） -->
-  <link rel="stylesheet" href="/ui/styles/tokens.css" />
-  <link rel="stylesheet" href="/ui/styles/layout.css" />
-  <link rel="stylesheet" href="/ui/styles/components.css" />
-  <link rel="stylesheet" href="/ui/styles/app.css" />
-  <link rel="stylesheet" href="/ui/styles/pages/action_config.css" />
+  <link rel="stylesheet" href="/ui/styles/tokens.css?v=industrial-ui-16" />
+  <link rel="stylesheet" href="/ui/styles/layout.css?v=industrial-ui-16" />
+  <link rel="stylesheet" href="/ui/styles/components.css?v=industrial-ui-16" />
+  <link rel="stylesheet" href="/ui/styles/app.css?v=industrial-ui-16" />
+  <link rel="stylesheet" href="/ui/styles/pages/action_config.css?v=industrial-ui-16" />
+  <link rel="stylesheet" href="/ui/styles/pages/system.css?v=industrial-ui-16" />
 
   <!-- 主题：默认绿 -->
-  <link id="themeStylesheet" rel="stylesheet" href="/ui/styles/themes/green-cyber.css" />
+  <link id="themeStylesheet" rel="stylesheet" href="/ui/styles/themes/green-cyber.css?v=industrial-ui-16" />
 </head>
 
 <body>
@@ -31,7 +32,7 @@
           <!-- 翻译按钮（正方形） -->
           <button class="icon-btn" id="btnTranslate" type="button" title="语言 / 翻译">译</button>
           <!-- 主题按钮（正方形） -->
-          <button class="icon-btn" id="btnTheme" type="button" title="主题 / Theme">🎨</button>
+          <button class="icon-btn" id="btnTheme" type="button" title="切换配色">色</button>
           <!-- Logo 占位（以后替换为你的Logo） -->
           <div class="logo-slot" title="Logo 占位">LOGO</div>
         </div>
@@ -523,7 +524,7 @@
         <!-- 页面：系统设置（空） -->
         <section class="page" data-page="system" id="page-system">
           <div class="content">
-            <div class="empty-hint" data-i18n="system.empty"></div>
+            <div id="systemRoot"></div>
           </div>
         </section>
       </div>
@@ -545,6 +546,6 @@
     <!-- <script type="module" src="/ui/js/app.js"></script> -->
 
   <!-- 入口脚本（ES Module，原生JS） -->
-  <script type="module" src="/ui/js/app.js"></script>
+  <script type="module" src="/ui/js/app.js?v=industrial-ui-16"></script>
 </body>
 </html>

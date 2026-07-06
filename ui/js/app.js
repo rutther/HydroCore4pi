@@ -1,9 +1,9 @@
-// 文件：ui/js/app.js
+﻿// 文件：ui/js/app.js
 // 职责：启动 UI（渲染 top-tabs/sub-tabs；绑定语言/主题；切换页面；初始化各页面模块）
 
 import { STATE, loadUiState } from "./state.js";
 import { initI18n, toggleLang, t, applyI18nToDom } from "./i18n.js";
-import { initTheme, toggleTheme } from "./theme.js";
+import { initTheme, toggleTheme, getTheme } from "./theme.js?v=industrial-ui-16";
 import { startClock } from "./time.js";
 import { setActivePage, setActiveHardwareSub } from "./router.js";
 
@@ -11,9 +11,10 @@ import { initHardwareScan } from "./pages/hardware/scan.js";
 import { initHardwareSensors } from "./pages/hardware/sensors.js";
 import { initHardwareVerify } from "./pages/hardware/verify.js";
 import { initHardwarePlan } from "./pages/hardware/plan.js";
-import { initDashboard } from "./pages/dashboard/dashboard.js";
+import { initDashboard } from "./pages/dashboard/dashboard.js?v=industrial-ui-16";
 import { initActionConfig } from "./pages/action_config/index.js";
 import { initTasksPage } from "./pages/tasks.js";
+import { initSystemPage, hydrateSystemChrome } from "./pages/system.js?v=industrial-ui-16";
 
 function renderTopTabs() {
   const top = document.getElementById("topTabs");
@@ -45,6 +46,8 @@ function renderTopTabs() {
         await initActionConfig();
       } else if (it.key === "tasks") {
         await initTasksPage();
+      } else if (it.key === "system") {
+        await initSystemPage();
       }
     };
 
@@ -102,6 +105,14 @@ function bindGlobalButtons() {
   const btnLang = document.getElementById("btnTranslate");
   const btnTheme = document.getElementById("btnTheme");
 
+  function updateThemeButton() {
+    const theme = getTheme();
+    const isBlue = theme === "blue-cyber";
+    btnTheme.textContent = isBlue ? "蓝" : "绿";
+    btnTheme.title = isBlue ? "当前蓝色配色，点击切换为绿色" : "当前绿色配色，点击切换为蓝色";
+    btnTheme.setAttribute("aria-label", btnTheme.title);
+  }
+
   btnLang.onclick = async () => {
     await toggleLang();
 
@@ -126,18 +137,26 @@ function bindGlobalButtons() {
     if (STATE.page === "tasks") {
       await initTasksPage();
     }
+    if (STATE.page === "system") {
+      await initSystemPage();
+    }
   };
 
-  btnTheme.onclick = () => toggleTheme();
+  btnTheme.onclick = () => {
+    toggleTheme();
+    updateThemeButton();
+  };
 
   // 初始化显示
   btnLang.textContent = (STATE.lang === "zh-CN") ? "译" : "EN";
+  updateThemeButton();
 }
 
 async function main() {
   loadUiState();
   initTheme();
   await initI18n();
+  hydrateSystemChrome();
 
   // 空态文案
   applyI18nToDom();
@@ -158,6 +177,8 @@ async function main() {
     await initActionConfig();
   } else if (STATE.page === "tasks") {
     await initTasksPage();
+  } else if (STATE.page === "system") {
+    await initSystemPage();
   } else if (STATE.page === "hardware") {
     if (STATE.hardwareSub === "sensors") {
       initHardwareSensors();

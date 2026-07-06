@@ -23,3 +23,5 @@ local_server.err.log
 local_preview.out.log
 local_preview.err.log
 
+dist/
+ui/dev/artifacts/

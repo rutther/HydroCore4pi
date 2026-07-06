@@ -1,11 +1,12 @@
 from flask import Blueprint, request, jsonify
 from pathlib import Path
 import json
+from ..utils.json_io import atomic_write_json
+from .. import settings
 
 bp = Blueprint("action_profile_api", __name__, url_prefix="/api/v1/action-profile")
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-PROFILE_DIR = PROJECT_ROOT / "data" / "action_profiles"
+PROFILE_DIR = settings.DATA_DIR / "action_profiles"
 CURRENT_PROFILE_FILENAME = "current_profile.json"
 CURRENT_PROFILE_FILE = PROFILE_DIR / CURRENT_PROFILE_FILENAME
 
@@ -13,10 +14,7 @@ CURRENT_PROFILE_FILE = PROFILE_DIR / CURRENT_PROFILE_FILENAME
 def _ensure_storage() -> None:
     PROFILE_DIR.mkdir(parents=True, exist_ok=True)
     if not CURRENT_PROFILE_FILE.exists():
-        CURRENT_PROFILE_FILE.write_text(
-            json.dumps({"filename": ""}, ensure_ascii=False, indent=2),
-            encoding="utf-8"
-        )
+        atomic_write_json(CURRENT_PROFILE_FILE, {"filename": ""})
 
 
 def _normalize_filename(raw: str) -> str:
@@ -62,9 +60,7 @@ def _write_profile_json(filename: str, content: dict) -> None:
     _ensure_storage()
     filename = _normalize_filename(filename)
     file_path = PROFILE_DIR / filename
-
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(content, f, ensure_ascii=False, indent=2)
+    atomic_write_json(file_path, content)
 
 
 def _read_current_filename() -> str:
@@ -83,9 +79,7 @@ def _read_current_filename() -> str:
 def _write_current_filename(filename: str) -> None:
     _ensure_storage()
     filename = _normalize_filename(filename)
-
-    with open(CURRENT_PROFILE_FILE, "w", encoding="utf-8") as f:
-        json.dump({"filename": filename}, f, ensure_ascii=False, indent=2)
+    atomic_write_json(CURRENT_PROFILE_FILE, {"filename": filename})
 
 
 @bp.get("/list")

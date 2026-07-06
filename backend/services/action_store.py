@@ -3,13 +3,16 @@ import json
 import re
 from typing import Any, Dict, List
 
+from ..utils.json_io import atomic_write_json
+from .. import settings
 
-ROOT = Path(__file__).resolve().parents[2]
-ACTUATOR_DIR = ROOT / "data" / "actuators"
-ACTION_UNIT_DIR = ROOT / "data" / "action_units"
-ACTION_TASK_DIR = ROOT / "data" / "action_tasks"
-ACTION_RULE_DIR = ROOT / "data" / "action_rules"
-ACTION_SCHEDULE_DIR = ROOT / "data" / "action_schedules"
+
+ACTUATOR_DIR = settings.DATA_DIR / "actuators"
+ACTION_UNIT_DIR = settings.DATA_DIR / "action_units"
+ACTION_TASK_DIR = settings.DATA_DIR / "action_tasks"
+ACTION_RULE_DIR = settings.DATA_DIR / "action_rules"
+ACTION_SCHEDULE_DIR = settings.DATA_DIR / "action_schedules"
+POLL_PLAN_FILE = settings.POLL_PLAN_FILE
 
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 TIME_OF_DAY_RE = re.compile(r"^\d{2}:\d{2}$")
@@ -40,8 +43,7 @@ def _read_json(path: Path) -> Dict[str, Any]:
 
 
 def _write_json(path: Path, data: Dict[str, Any]) -> None:
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump(data, fh, ensure_ascii=False, indent=2)
+    atomic_write_json(path, data)
 
 
 def list_items(base: Path) -> List[Dict[str, Any]]:
@@ -89,6 +91,46 @@ def _as_bool(value: Any, default: bool) -> bool:
     if value is None:
         return default
     return bool(value)
+
+
+def _poll_plan_signal_keys() -> set[tuple[str, int, str]]:
+    data = _read_json(POLL_PLAN_FILE)
+    if isinstance(data, list):
+        plans = data
+    else:
+        plans = data.get("plans", [])
+    if not isinstance(plans, list):
+        raise ValueError("采集计划格式不正确，无法校验触发参数")
+
+    keys: set[tuple[str, int, str]] = set()
+    for ent in plans:
+        if not isinstance(ent, dict):
+            continue
+        try:
+            protocol = str(ent["protocol"]).strip()
+            address = int(ent["address"])
+        except Exception:
+            continue
+        for raw_param in ent.get("parameters", []):
+            if isinstance(raw_param, str):
+                parameter = raw_param.strip()
+            elif isinstance(raw_param, dict):
+                parameter = str(raw_param.get("name") or "").strip()
+            else:
+                parameter = ""
+            if protocol and parameter:
+                keys.add((protocol, address, parameter))
+    return keys
+
+
+def _require_plan_signal(protocol: str, address: int, parameter: str) -> None:
+    try:
+        keys = _poll_plan_signal_keys()
+    except FileNotFoundError as exc:
+        raise ValueError("采集计划不存在，无法保存参数触发规则") from exc
+
+    if (protocol, address, parameter) not in keys:
+        raise ValueError(f"触发参数不在当前采集计划中: {protocol}@{address}:{parameter}")
 
 
 def _ensure_kind(item: Dict[str, Any]) -> str:
@@ -359,21 +401,29 @@ def _normalize_aggregation(raw: Any) -> str:
 
 
 def rule_summary(item: Dict[str, Any]) -> str:
-    metric = item.get("metric_key") or item.get("signal_parameter") or "-"
     operator = item.get("operator") or "-"
     threshold = item.get("threshold")
     sustain_sec = int(item.get("sustain_sec", 0))
     task_name = item.get("task_name") or item.get("task_id") or "-"
     protocol = item.get("signal_protocol") or "-"
     address = item.get("signal_address")
-    parameter = item.get("signal_parameter") or metric
+    parameter = item.get("signal_parameter") or item.get("metric_key") or "-"
     aggregation = item.get("aggregation") or "last"
+    agg_text = {
+        "last": "最新值",
+        "avg": "平均值",
+        "min": "最小值",
+        "max": "最大值",
+    }.get(str(aggregation), str(aggregation))
+    op_text = {
+        ">": "大于",
+        ">=": "大于等于",
+        "<": "小于",
+        "<=": "小于等于",
+    }.get(str(operator), str(operator))
     window_sec = int(item.get("window_sec", 60))
     target = f"{protocol}:{address}:{parameter}"
-    return (
-        f"When {target} {aggregation} {operator} {threshold} "
-        f"for {sustain_sec}s -> {task_name}"
-    )
+    return f"当 {target} 在最近 {window_sec} 秒的{agg_text}{op_text} {threshold} 并持续 {sustain_sec} 秒时，执行 {task_name}"
 
 
 def _normalize_active_days(raw: Any) -> List[int]:
@@ -437,6 +487,7 @@ def save_action_rule(data: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("signal_address must be between 0 and 255")
     if not signal_parameter:
         raise ValueError("signal_parameter is required")
+    _require_plan_signal(signal_protocol, signal_address, signal_parameter)
 
     normalized = {
         "id": item_id,

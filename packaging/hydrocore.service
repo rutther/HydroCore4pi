@@ -1,0 +1,22 @@
+[Unit]
+Description=HydroCore edge controller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hydrocore
+Group=hydrocore
+SupplementaryGroups=dialout gpio
+WorkingDirectory=/opt/hydrocore
+EnvironmentFile=/etc/hydrocore/hydrocore.env
+ExecStart=/usr/bin/python3 -m backend.app
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/hydrocore /var/log/hydrocore /etc/hydrocore
+
+[Install]
+WantedBy=multi-user.target
+

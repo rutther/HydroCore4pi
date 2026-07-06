@@ -7,6 +7,7 @@ from . import settings
 def get_conn():
     settings.DB_FILE.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(settings.DB_FILE)
+    conn.execute("PRAGMA busy_timeout=3000")
     conn.row_factory = sqlite3.Row
     return conn
 

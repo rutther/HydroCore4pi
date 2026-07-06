@@ -4,7 +4,7 @@
   "enabled": false,
   "metric_key": "ph",
   "signal_protocol": "lanchang_ph",
-  "signal_address": 1,
+  "signal_address": 9,
   "signal_parameter": "measurement",
   "aggregation": "last",
   "window_sec": 60,
@@ -16,6 +16,17 @@
   "cooldown_sec": 600,
   "max_runs_per_hour": 4,
   "requires_fresh_data": true,
-  "summary": "当 pH 连续高于阈值时，执行加药泵 A 单次加药",
-  "description": "示例规则：pH 持续偏高时执行加药。"
+  "description": "示例规则：pH 持续偏高时执行加药。",
+  "active_days": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "active_start_time": "",
+  "active_end_time": "",
+  "summary": "当 lanchang_ph:9:measurement 在最近 60 秒的最新值大于 6.8 并持续 30 秒时，执行 加药泵 A 单次加药"
 }
