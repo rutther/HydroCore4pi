@@ -1,0 +1,7 @@
+[Unit]
+Description=Reload HydroCore kiosk after local screen setting changes
+After=hydrocore-kiosk.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl restart hydrocore-kiosk.service

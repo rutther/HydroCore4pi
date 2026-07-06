@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+
+ENV_FILE=/etc/hydrocore/hydrocore.env
+if [ -r "$ENV_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+fi
+
+HOST="${HYDROCORE_HOST:-0.0.0.0}"
+PORT="${HYDROCORE_PORT:-5000}"
+BIND="${HYDROCORE_BIND:-${HOST}:${PORT}}"
+WORKERS="${HYDROCORE_GUNICORN_WORKERS:-1}"
+THREADS="${HYDROCORE_GUNICORN_THREADS:-4}"
+TIMEOUT="${HYDROCORE_GUNICORN_TIMEOUT:-120}"
+
+exec /usr/bin/gunicorn \
+  --workers "$WORKERS" \
+  --threads "$THREADS" \
+  --timeout "$TIMEOUT" \
+  --bind "$BIND" \
+  backend.app:app

@@ -18,6 +18,7 @@ bp = Blueprint("system_api", __name__, url_prefix="/api/v1/system")
 
 PROFILE_FILE = settings.DATA_DIR / "runtime" / "system_profile.json"
 POLLER_STATE_FILE = settings.DATA_DIR / "runtime" / "poller_state.json"
+SCREEN_FILE = settings.DATA_DIR / "runtime" / "screen.json"
 
 DEFAULT_PROFILE = {
     "device_name": "1号循环水控制机",
@@ -25,6 +26,12 @@ DEFAULT_PROFILE = {
     "device_id": "HC-EDGE-001",
     "logo_text": "LOGO",
 }
+
+DEFAULT_SCREEN = {
+    "orientation": "normal",
+}
+
+SCREEN_ORIENTATIONS = {"normal", "left", "right", "inverted"}
 
 
 def _now_text() -> str:
@@ -59,6 +66,32 @@ def load_profile() -> dict:
         if raw.get("updated_at"):
             profile["updated_at"] = str(raw.get("updated_at"))
     return profile
+
+
+def load_screen() -> dict:
+    raw = _read_json(SCREEN_FILE, {})
+    screen = dict(DEFAULT_SCREEN)
+    if isinstance(raw, dict):
+        orientation = str(raw.get("orientation") or DEFAULT_SCREEN["orientation"]).strip()
+        if orientation not in SCREEN_ORIENTATIONS:
+            orientation = DEFAULT_SCREEN["orientation"]
+        screen["orientation"] = orientation
+        if raw.get("updated_at"):
+            screen["updated_at"] = str(raw.get("updated_at"))
+    return screen
+
+
+def _save_screen(payload: dict) -> dict:
+    current = load_screen()
+    orientation = str(payload.get("orientation") or current["orientation"]).strip()
+    if orientation not in SCREEN_ORIENTATIONS:
+        raise ValueError("不支持的屏幕方向")
+    current.update({
+        "orientation": orientation,
+        "updated_at": _now_text(),
+    })
+    atomic_write_json(SCREEN_FILE, current)
+    return current
 
 
 def _save_profile(payload: dict) -> dict:
@@ -188,6 +221,20 @@ def api_system_profile_save():
         return jsonify({"ok": False, "error": str(exc)}), 400
 
 
+@bp.get("/screen")
+def api_system_screen():
+    return jsonify({"ok": True, "screen": load_screen()}), 200
+
+
+@bp.put("/screen")
+def api_system_screen_save():
+    try:
+        payload = request.get_json(force=True) or {}
+        return jsonify({"ok": True, "screen": _save_screen(payload)}), 200
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+
 @bp.get("/status")
 def api_system_status():
     ip = _request_ip()
@@ -203,6 +250,7 @@ def api_system_status():
         },
         "storage": _storage_status(),
         "services": _service_status(),
+        "screen": load_screen(),
         "server_ts": _now_text(),
     }), 200
 

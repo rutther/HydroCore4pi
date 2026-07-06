@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch HydroCore local screen settings
+
+[Path]
+PathChanged=/var/lib/hydrocore/runtime/screen.json
+Unit=hydrocore-kiosk-reload.service
+
+[Install]
+WantedBy=multi-user.target

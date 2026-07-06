@@ -113,7 +113,7 @@ if ! getent passwd hydrocore >/dev/null; then
   adduser --system --home /var/lib/hydrocore --no-create-home --ingroup hydrocore hydrocore >/dev/null
 fi
 
-for group in dialout gpio; do
+for group in dialout gpio video render input audio; do
   if getent group "$group" >/dev/null; then
     usermod -a -G "$group" hydrocore || true
   fi
@@ -123,8 +123,12 @@ install -d -o hydrocore -g hydrocore -m 0750 /var/lib/hydrocore
 install -d -o hydrocore -g hydrocore -m 0750 /var/lib/hydrocore/db
 install -d -o hydrocore -g hydrocore -m 0750 /var/lib/hydrocore/logs
 install -d -o hydrocore -g hydrocore -m 0750 /var/lib/hydrocore/runtime
+install -d -o hydrocore -g hydrocore -m 0750 /var/lib/hydrocore/kiosk
+install -d -o hydrocore -g hydrocore -m 0750 /var/lib/hydrocore/kiosk/chromium
 install -d -o hydrocore -g hydrocore -m 0750 /var/log/hydrocore
 install -d -m 0755 /etc/hydrocore
+install -d -m 0755 /etc/chromium/policies/managed
+install -d -m 0755 /etc/chromium-browser/policies/managed
 
 seed_dir() {
   src="$1"
@@ -151,10 +155,26 @@ chown -R hydrocore:hydrocore /var/lib/hydrocore /var/log/hydrocore
 
 if command -v systemctl >/dev/null 2>&1; then
   systemctl daemon-reload || true
+  systemctl set-default multi-user.target || true
+  for service in display-manager.service lightdm.service gdm3.service sddm.service lxdm.service; do
+    systemctl disable "$service" 2>/dev/null || true
+    systemctl stop "$service" 2>/dev/null || true
+  done
   systemctl enable hydrocore.service || true
+  systemctl enable hydrocore-watchdog.timer || true
+  if command -v cage >/dev/null 2>&1 && { command -v chromium >/dev/null 2>&1 || command -v chromium-browser >/dev/null 2>&1; }; then
+    systemctl enable hydrocore-kiosk.service || true
+    systemctl enable hydrocore-kiosk-reload.path || true
+  fi
   if [ "${1:-}" = "configure" ]; then
     systemctl restart hydrocore.service || systemctl start hydrocore.service || true
+    if command -v cage >/dev/null 2>&1 && { command -v chromium >/dev/null 2>&1 || command -v chromium-browser >/dev/null 2>&1; }; then
+      systemctl restart hydrocore-kiosk.service || systemctl start hydrocore-kiosk.service || true
+      systemctl restart hydrocore-kiosk-reload.path || systemctl start hydrocore-kiosk-reload.path || true
+    fi
+    systemctl restart hydrocore-watchdog.timer || systemctl start hydrocore-watchdog.timer || true
   fi
+  systemctl restart systemd-journald.service || true
 fi
 
 exit 0
@@ -167,6 +187,12 @@ set -e
 
 if [ "${1:-}" = "remove" ] || [ "${1:-}" = "deconfigure" ]; then
   if command -v systemctl >/dev/null 2>&1; then
+    systemctl stop hydrocore-watchdog.timer || true
+    systemctl disable hydrocore-watchdog.timer || true
+    systemctl stop hydrocore-kiosk-reload.path || true
+    systemctl disable hydrocore-kiosk-reload.path || true
+    systemctl stop hydrocore-kiosk.service || true
+    systemctl disable hydrocore-kiosk.service || true
     systemctl stop hydrocore.service || true
     systemctl disable hydrocore.service || true
   fi
@@ -186,6 +212,7 @@ fi
 
 if [ "${1:-}" = "purge" ]; then
   rm -f /etc/hydrocore/hydrocore.env
+  rm -f /etc/systemd/journald.conf.d/90-hydrocore.conf
   rmdir /etc/hydrocore 2>/dev/null || true
   echo "HydroCore runtime data kept at /var/lib/hydrocore. Remove manually if required." >&2
 fi
@@ -201,8 +228,8 @@ Section: misc
 Priority: optional
 Architecture: {arch}
 Maintainer: HydroCore Maintainers <root@localhost>
-Depends: python3, python3-flask, python3-serial, python3-gpiozero, adduser, systemd
-Recommends: python3-lgpio | python3-rpi.gpio
+Depends: python3, python3-flask, python3-serial, python3-gpiozero, gunicorn, adduser, systemd
+Recommends: python3-lgpio | python3-rpi.gpio, chromium, cage, wlr-randr
 Installed-Size: {installed_size}
 Homepage: https://github.com/
 Description: HydroCore AI rebuild edge controller
@@ -286,8 +313,20 @@ def _collect_data_files() -> list[PackageFile]:
 
     files.extend(_copy_default_data())
     files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore.env", "/etc/hydrocore/hydrocore.env", 0o644))
+    files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore-chromium-policy.json", "/etc/chromium/policies/managed/hydrocore.json", 0o644))
+    files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore-chromium-policy.json", "/etc/chromium-browser/policies/managed/hydrocore.json", 0o644))
     files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore.service", "/lib/systemd/system/hydrocore.service", 0o644))
+    files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore-kiosk.service", "/lib/systemd/system/hydrocore-kiosk.service", 0o644))
+    files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore-kiosk-reload.service", "/lib/systemd/system/hydrocore-kiosk-reload.service", 0o644))
+    files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore-kiosk-reload.path", "/lib/systemd/system/hydrocore-kiosk-reload.path", 0o644))
+    files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore-watchdog.service", "/lib/systemd/system/hydrocore-watchdog.service", 0o644))
+    files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore-watchdog.timer", "/lib/systemd/system/hydrocore-watchdog.timer", 0o644))
+    files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore-run", "/usr/bin/hydrocore-run", 0o755))
+    files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore-kiosk-launch", "/usr/bin/hydrocore-kiosk-launch", 0o755))
+    files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore-apply-screen-orientation", "/usr/bin/hydrocore-apply-screen-orientation", 0o755))
     files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore-ctl", "/usr/bin/hydrocore-ctl", 0o755))
+    files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore-watchdog", "/usr/bin/hydrocore-watchdog", 0o755))
+    files.append(PackageFile(PROJECT_ROOT / "packaging" / "hydrocore-journald.conf", "/etc/systemd/journald.conf.d/90-hydrocore.conf", 0o644))
     return files
 
 
@@ -300,7 +339,7 @@ def build(version: str, arch: str, out_dir: Path) -> Path:
 
     control_files = [
         _bytes_file("control", _control(version, arch, installed_size)),
-        _bytes_file("conffiles", "/etc/hydrocore/hydrocore.env\n"),
+        _bytes_file("conffiles", "/etc/hydrocore/hydrocore.env\n/etc/chromium/policies/managed/hydrocore.json\n/etc/chromium-browser/policies/managed/hydrocore.json\n/etc/systemd/journald.conf.d/90-hydrocore.conf\n"),
         _bytes_file("postinst", _script_postinst(), 0o755),
         _bytes_file("prerm", _script_prerm(), 0o755),
         _bytes_file("postrm", _script_postrm(), 0o755),

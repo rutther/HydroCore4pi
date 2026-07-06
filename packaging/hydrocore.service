@@ -2,21 +2,24 @@
 Description=HydroCore edge controller
 After=network-online.target
 Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=10
 
 [Service]
 Type=simple
 User=hydrocore
 Group=hydrocore
-SupplementaryGroups=dialout gpio
 WorkingDirectory=/opt/hydrocore
-EnvironmentFile=/etc/hydrocore/hydrocore.env
-ExecStart=/usr/bin/python3 -m backend.app
-Restart=on-failure
+Environment=HYDROCORE_BIND=0.0.0.0:5000
+EnvironmentFile=-/etc/hydrocore/hydrocore.env
+ExecStart=/usr/bin/hydrocore-run
+Restart=always
 RestartSec=3
 NoNewPrivileges=true
 PrivateTmp=true
 ReadWritePaths=/var/lib/hydrocore /var/log/hydrocore /etc/hydrocore
+LogRateLimitIntervalSec=30s
+LogRateLimitBurst=2000
 
 [Install]
 WantedBy=multi-user.target
-

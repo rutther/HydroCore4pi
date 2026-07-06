@@ -30,10 +30,23 @@
 /var/lib/hydrocore/db           SQLite 数据库
 /var/lib/hydrocore/logs         应用日志
 /var/lib/hydrocore/protocols_user 用户导入协议
+/var/lib/hydrocore/kiosk        本机屏幕 Chromium 数据
 
 /etc/hydrocore/hydrocore.env    环境配置，作为 conffile
+/etc/chromium/policies/managed/hydrocore.json  禁用 Chromium 自带翻译浮层
+/etc/chromium-browser/policies/managed/hydrocore.json  兼容 Raspberry Pi OS Chromium 策略路径
+/etc/systemd/journald.conf.d/90-hydrocore.conf  日志容量限制
 /lib/systemd/system/hydrocore.service
+/lib/systemd/system/hydrocore-kiosk.service
+/lib/systemd/system/hydrocore-kiosk-reload.service
+/lib/systemd/system/hydrocore-kiosk-reload.path
+/lib/systemd/system/hydrocore-watchdog.service
+/lib/systemd/system/hydrocore-watchdog.timer
 /usr/bin/hydrocore-ctl          运维辅助命令
+/usr/bin/hydrocore-run          后台服务启动脚本
+/usr/bin/hydrocore-kiosk-launch 本机屏幕启动脚本
+/usr/bin/hydrocore-apply-screen-orientation 本机屏幕方向应用脚本
+/usr/bin/hydrocore-watchdog     HTTP 健康检查脚本
 ```
 
 ## 预设保留策略
@@ -62,6 +75,8 @@
 
 ```text
 hydrocore.service
+hydrocore-kiosk.service
+hydrocore-watchdog.timer
 ```
 
 运行用户：
@@ -74,7 +89,17 @@ hydrocore
 
 - 加入 `dialout` 组访问串口。
 - 如果系统存在 `gpio` 组，也加入 `gpio`。
+- 如果系统存在 `video`、`render`、`input`、`audio` 组，也加入，用于本机屏幕 kiosk。
 - 程序文件只读，运行数据只写 `/var/lib/hydrocore`。
+
+服务分层：
+
+- `hydrocore.service` 是核心控制服务，使用 gunicorn 单 worker 运行 Flask 应用和后台采集线程。
+- `hydrocore-kiosk.service` 是可选本机 HMI，只负责在 tty1 用 `cage + chromium` 全屏显示 `http://127.0.0.1:5000/ui/`。
+- `hydrocore-kiosk-reload.path` 监听屏幕方向配置变化，变化后重启本机 HMI 让方向生效。
+- `hydrocore-watchdog.timer` 每分钟检查本机 HTTP 接口，失败时重启核心服务。
+
+安装后默认把系统启动目标切到 `multi-user.target`，并停止常见 display manager。核心服务不依赖桌面、不依赖浏览器；只有检测到 `cage` 和 Chromium 时才启用本机屏幕 kiosk。
 
 ## 构建策略
 
@@ -95,6 +120,8 @@ data.tar.gz
 ```bash
 sudo apt install ./hydrocore-ai_*.deb
 systemctl status hydrocore
+systemctl status hydrocore-kiosk
+systemctl status hydrocore-watchdog.timer
 hydrocore-ctl status
 hydrocore-ctl logs
 ```
@@ -104,4 +131,3 @@ hydrocore-ctl logs
 ```text
 http://<设备IP>:5000/ui/
 ```
-

@@ -5,6 +5,7 @@ import { STATE } from "../state.js";
 
 const API_STATUS = "/api/v1/system/status";
 const API_PROFILE = "/api/v1/system/profile";
+const API_SCREEN = "/api/v1/system/screen";
 
 const TEXT = {
   "zh-CN": {
@@ -15,13 +16,21 @@ const TEXT = {
     menuAccess: "手机访问",
     menuServices: "运行状态",
     menuStorage: "存储维护",
-    menuUi: "界面偏好",
+    menuScreen: "屏幕方向",
     menuAdvanced: "高级维护",
     profile: "设备名片",
     deviceName: "本机名称",
     location: "现场位置",
     deviceId: "设备编号",
     logoText: "Logo 标识",
+    screen: "屏幕方向",
+    screenHint: "用于本机触摸屏安装方向；保存后本机显示会短暂重启。",
+    orientation: "当前方向",
+    normal: "正常横屏",
+    left: "左转 90°",
+    right: "右转 90°",
+    inverted: "倒置 180°",
+    saveScreen: "保存方向",
     save: "保存信息",
     saving: "正在保存...",
     saved: "已保存",
@@ -56,6 +65,7 @@ const TEXT = {
     copied: "已复制访问链接",
     copyFailed: "复制失败，请手动复制",
     loadFailed: "系统状态读取失败",
+    screenSaved: "屏幕方向已保存，本机显示会自动重启生效",
   },
   "en-US": {
     title: "System Settings",
@@ -65,13 +75,21 @@ const TEXT = {
     menuAccess: "Phone Access",
     menuServices: "Runtime",
     menuStorage: "Storage",
-    menuUi: "UI",
+    menuScreen: "Screen",
     menuAdvanced: "Advanced",
     profile: "Device Card",
     deviceName: "Device Name",
     location: "Site Location",
     deviceId: "Device ID",
     logoText: "Logo Text",
+    screen: "Screen Direction",
+    screenHint: "For the built-in touch display. Saving briefly restarts the local screen.",
+    orientation: "Direction",
+    normal: "Landscape",
+    left: "Rotate Left",
+    right: "Rotate Right",
+    inverted: "Upside Down",
+    saveScreen: "Save Direction",
     save: "Save",
     saving: "Saving...",
     saved: "Saved",
@@ -106,6 +124,7 @@ const TEXT = {
     copied: "Link copied",
     copyFailed: "Copy failed",
     loadFailed: "Failed to read system status",
+    screenSaved: "Screen direction saved. The local display will restart.",
   },
 };
 
@@ -134,6 +153,11 @@ function boolText(value, on = tx("running"), off = tx("stopped")) {
 
 function stateClass(value) {
   return value ? "ok" : "muted";
+}
+
+function orientationLabel(value) {
+  const key = ["normal", "left", "right", "inverted"].includes(value) ? value : "normal";
+  return tx(key);
 }
 
 function setSystemChrome(profile) {
@@ -182,7 +206,7 @@ function renderMenu(status) {
         <span>${tx("menuStorage")}</span><strong>${Number(storage.used_percent || 0).toFixed(1)}%</strong>
       </div>
       <div class="system-menu-item">
-        <span>${tx("menuUi")}</span><strong>${STATE.lang}</strong>
+        <span>${tx("menuScreen")}</span><strong>${orientationLabel(status?.screen?.orientation)}</strong>
       </div>
       <div class="system-menu-item danger">
         <span>${tx("menuAdvanced")}</span><strong>${tx("disabled")}</strong>
@@ -219,6 +243,36 @@ function renderProfilePanel(profile) {
       <div class="system-actions">
         <button class="system-primary" id="sysSaveProfile" type="button">${tx("save")}</button>
         <span class="system-feedback" id="sysProfileFeedback"></span>
+      </div>
+    </section>
+  `;
+}
+
+function renderScreenPanel(screen) {
+  const current = screen?.orientation || "normal";
+  const options = [
+    ["normal", tx("normal")],
+    ["left", tx("left")],
+    ["right", tx("right")],
+    ["inverted", tx("inverted")],
+  ];
+  return `
+    <section class="system-panel system-screen-panel">
+      <div class="system-panel-head">
+        <h3>${tx("screen")}</h3>
+        <span class="system-mini">${tx("screenHint")}</span>
+      </div>
+      <div class="system-orientation-group" role="radiogroup" aria-label="${tx("orientation")}">
+        ${options.map(([value, label]) => `
+          <label class="system-orientation ${current === value ? "active" : ""}">
+            <input type="radio" name="sysScreenOrientation" value="${value}" ${current === value ? "checked" : ""} />
+            <span>${label}</span>
+          </label>
+        `).join("")}
+      </div>
+      <div class="system-actions">
+        <button class="system-primary" id="sysSaveScreen" type="button">${tx("saveScreen")}</button>
+        <span class="system-feedback" id="sysScreenFeedback"></span>
       </div>
     </section>
   `;
@@ -327,6 +381,7 @@ function render(status, message = "") {
         </div>
         <div class="system-grid">
           ${renderProfilePanel(profile)}
+          ${renderScreenPanel(status?.screen || {})}
           ${renderAccessPanel(status)}
           ${renderStatusPanel(status)}
           ${renderStoragePanel(status)}
@@ -336,6 +391,12 @@ function render(status, message = "") {
     </div>
   `;
   bindEvents(status);
+}
+
+function collectScreen() {
+  return {
+    orientation: document.querySelector("input[name='sysScreenOrientation']:checked")?.value || "normal",
+  };
 }
 
 function collectProfile() {
@@ -374,6 +435,34 @@ function bindEvents(status) {
         if (feedback) feedback.textContent = String(err.message || err);
       } finally {
         saveBtn.disabled = false;
+      }
+    };
+  }
+
+  document.querySelectorAll(".system-orientation input").forEach((input) => {
+    input.onchange = () => {
+      document.querySelectorAll(".system-orientation").forEach((item) => item.classList.remove("active"));
+      input.closest(".system-orientation")?.classList.add("active");
+    };
+  });
+
+  const saveScreen = document.getElementById("sysSaveScreen");
+  if (saveScreen) {
+    saveScreen.onclick = async () => {
+      const feedback = document.getElementById("sysScreenFeedback");
+      saveScreen.disabled = true;
+      if (feedback) feedback.textContent = tx("saving");
+      try {
+        await apiJson(API_SCREEN, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(collectScreen()),
+        });
+        await initSystemPage(tx("screenSaved"));
+      } catch (err) {
+        if (feedback) feedback.textContent = String(err.message || err);
+      } finally {
+        saveScreen.disabled = false;
       }
     };
   }

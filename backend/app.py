@@ -234,6 +234,25 @@ def _restore_poller_if_enabled() -> None:
 def _restore_poller_before_first_request():
     _restore_poller_if_enabled()
 
+def _env_flag(name: str, default: bool = True) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.lower() in ("1", "true", "yes", "on")
+
+
+def _should_autostart_background_services() -> bool:
+    if not _env_flag("HYDROCORE_BACKGROUND_AUTOSTART", True):
+        return False
+    debug = os.environ.get("HYDROCORE_DEBUG", "").lower() in ("1", "true", "yes", "on")
+    return (not debug) or os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+
+
+def ensure_background_services_started() -> None:
+    if _should_autostart_background_services():
+        _restore_poller_if_enabled()
+
+
 @app.get("/api/v1/poll/plan")
 def api_get_poll_plan():
     """
@@ -340,9 +359,10 @@ def ui_static(filename):
 
 def main():
     debug = os.environ.get("HYDROCORE_DEBUG", "").lower() in ("1", "true", "yes", "on")
-    if (debug and os.environ.get("WERKZEUG_RUN_MAIN") == "true") or not debug:
-        _restore_poller_if_enabled()
+    ensure_background_services_started()
     app.run(host=settings.HOST, port=settings.PORT, debug=debug, use_reloader=debug)
+
+ensure_background_services_started()
 
 if __name__ == "__main__":
     main()

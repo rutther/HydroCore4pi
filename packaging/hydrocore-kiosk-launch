@@ -1,0 +1,43 @@
+#!/bin/sh
+set -eu
+
+ENV_FILE=/etc/hydrocore/hydrocore.env
+if [ -r "$ENV_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+fi
+
+URL="${HYDROCORE_KIOSK_URL:-http://127.0.0.1:5000/ui/}"
+PROFILE="${HYDROCORE_KIOSK_PROFILE:-/var/lib/hydrocore/kiosk/chromium}"
+
+if command -v chromium >/dev/null 2>&1; then
+  BROWSER="$(command -v chromium)"
+elif command -v chromium-browser >/dev/null 2>&1; then
+  BROWSER="$(command -v chromium-browser)"
+else
+  echo "HydroCore kiosk cannot find chromium or chromium-browser" >&2
+  exit 127
+fi
+
+mkdir -p "$PROFILE"
+
+exec /usr/bin/cage -s -- /bin/sh -c '
+  /usr/bin/hydrocore-apply-screen-orientation || true
+  exec "$@"
+' hydrocore-kiosk "$BROWSER" \
+  --kiosk "$URL" \
+  --lang=zh-CN \
+  --no-first-run \
+  --no-default-browser-check \
+  --noerrdialogs \
+  --disable-background-networking \
+  --disable-infobars \
+  --disable-extensions \
+  --disable-sync \
+  --disable-session-crashed-bubble \
+  --disable-translate \
+  --disable-features=Translate,TranslateUI,AutofillServerCommunication,OptimizationHints,MediaRouter \
+  --check-for-update-interval=31536000 \
+  --password-store=basic \
+  --user-data-dir="$PROFILE" \
+  --ozone-platform=wayland

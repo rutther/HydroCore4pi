@@ -1,0 +1,44 @@
+#!/bin/sh
+set -eu
+
+CONFIG="${HYDROCORE_SCREEN_CONFIG:-/var/lib/hydrocore/runtime/screen.json}"
+ORIENTATION="${HYDROCORE_SCREEN_ORIENTATION:-}"
+OUTPUT="${HYDROCORE_SCREEN_OUTPUT:-}"
+
+if [ -z "$ORIENTATION" ] && [ -r "$CONFIG" ]; then
+  ORIENTATION="$(/usr/bin/python3 - "$CONFIG" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1], "r", encoding="utf-8") as fh:
+        data = json.load(fh)
+    print(str(data.get("orientation") or "normal"))
+except Exception:
+    print("normal")
+PY
+)"
+fi
+
+case "${ORIENTATION:-normal}" in
+  normal) TRANSFORM="normal" ;;
+  left) TRANSFORM="90" ;;
+  right) TRANSFORM="270" ;;
+  inverted) TRANSFORM="180" ;;
+  *) TRANSFORM="normal" ;;
+esac
+
+if ! command -v wlr-randr >/dev/null 2>&1; then
+  echo "wlr-randr not installed; screen orientation not applied" >&2
+  exit 0
+fi
+
+if [ -n "$OUTPUT" ]; then
+  wlr-randr --output "$OUTPUT" --transform "$TRANSFORM" || true
+  exit 0
+fi
+
+outputs="$(wlr-randr 2>/dev/null | awk '/^[A-Za-z0-9_.-]+/ {print $1}')"
+for output in $outputs; do
+  wlr-randr --output "$output" --transform "$TRANSFORM" || true
+done

@@ -122,8 +122,9 @@ function bindGlobalButtons() {
     applyStaticLabels();
     applyI18nToDom();
 
-    // 翻译按钮文案
-    btnLang.textContent = (STATE.lang === "zh-CN") ? "译" : "EN";
+    btnLang.textContent = (STATE.lang === "zh-CN") ? "中" : "EN";
+    btnLang.title = (STATE.lang === "zh-CN") ? "当前中文，点击切换英文" : "Current English, switch to Chinese";
+    btnLang.setAttribute("aria-label", btnLang.title);
 
     // 当前页如果是硬件扫描，重新刷新扫描页静态文案
     if (STATE.page === "hardware" && STATE.hardwareSub === "scan") {
@@ -148,7 +149,9 @@ function bindGlobalButtons() {
   };
 
   // 初始化显示
-  btnLang.textContent = (STATE.lang === "zh-CN") ? "译" : "EN";
+  btnLang.textContent = (STATE.lang === "zh-CN") ? "中" : "EN";
+  btnLang.title = (STATE.lang === "zh-CN") ? "当前中文，点击切换英文" : "Current English, switch to Chinese";
+  btnLang.setAttribute("aria-label", btnLang.title);
   updateThemeButton();
 }
 
