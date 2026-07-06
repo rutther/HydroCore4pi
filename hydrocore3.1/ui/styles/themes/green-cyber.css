@@ -1,0 +1,8 @@
+/* 文件：ui/styles/themes/green-cyber.css
+ * 职责：覆盖tokens（绿色赛博）
+ */
+:root{
+  --green:#2fbf83;
+  --green2:#176b4a;
+  --olive:#2f8f65;
+}

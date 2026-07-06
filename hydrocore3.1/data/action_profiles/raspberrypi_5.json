@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "type": "raspberrypi",
+  "version": "5",
+  "id": "raspberrypi_5_template",
+  "name": "树莓派 5 预留模板",
+  "description": "树莓派 5 GPIO 预留模板",
+  "capabilities": {
+    "switch_output_pins": [],
+    "pwm_output_pins": [],
+    "pwm_freq_hz_range": [
+      0,
+      0
+    ],
+    "pwm_default_freq_hz": 0
+  },
+  "defaults": {
+    "switch_open_level": "low"
+  }
+}

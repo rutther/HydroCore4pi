@@ -1,0 +1,46 @@
+
+hydrocore3.1/
+├── Api.md                     # 手写的接口说明文档
+├── api_smoke.py               # API 冒烟测试脚本（依次调 meta/data 系列接口）
+├── backend/
+│   ├── api/
+│   │   ├── data_api.py        # /api/v1/data/* 时间序列查询 & CSV 导出
+│   │   ├── __init__.py
+│   │   ├── meta_api1.py       # 旧版/备份的 meta 接口（目前入口没挂它）
+│   │   ├── meta_api.py        # /api/v1/meta/* & /api/v1/data/range
+│   │   └── readme.md          # 说明
+│   ├── app.py                 # Flask 入口，注册蓝图 + 扫描/改址/config_get/poll_plan + /ui/*
+│   ├── db.py                  # SQLite 连接/初始化，get_conn/init_db
+│   ├── __init__.py            # 把 backend 作为包
+│   ├── schema.sql             # sensor_data 等表结构定义
+│   ├── services/
+│   │   ├── addr_writer_service.py  # 改从站地址（写 0x06），对应 /api/v1/address
+│   │   ├── config_get_service.py   # 单次配置读取（0x03），对应 /api/v1/config/get 与 poller
+│   │   ├── __init__.py
+│   │   ├── protocol_loader.py      # 读 protocols/*.json，解析寄存器布局/单位等
+│   │   ├── scan_service.py         # 地址扫描任务（读测回应），对应 /api/v1/scan
+│   │   └── serial_modbus.py        # Modbus RTU 串口读写封装（基于 pyserial）
+│   ├── settings.py             # 一些运行参数/路径配置（若有用到）
+│   ├── tasks/
+│   │   └── config_poller.py    # 采集轮询器主进程（python -m backend.tasks.config_poller）
+│   └── utils/
+│       ├── __init__.py
+│       └── locks.py            # 串口互斥锁等（避免多任务同时抢同一串口）
+├── code_files_only.txt         # 你之前导出的“代码文件清单”
+├── code_tree.txt               # 你之前导出的 tree 结果
+├── data/
+│   ├── db/
+│   │   └── hydro.db            # SQLite 数据库（生产数据，不是代码）
+│   └── logs/                   # 日志目录（目前空）
+├── diag_min.py                 # 后端与数据库的最小诊断脚本（你之前用过）
+├── flow.md                     # 流程/设计文档（文字）
+├── protocols/
+│   ├── lanchang_ec.json        # 电导率探头协议定义
+│   ├── lanchang_ph.json        # pH 探头协议定义
+│   ├── lc_ec_example.md        # 协议说明示例（文档）
+│   └── lc_ph_example.md
+├── requirements.txt            # Python 依赖列表（Flask、pyserial 等）
+├── tasks/
+│   ├── config_poll_plan.json   # 采集计划（采谁、从哪儿采、多久采一次）
+│   └── readme.md               # 计划文件说明
+└── test4self1.py               # 你自己的小测试脚本

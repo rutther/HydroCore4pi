@@ -1,0 +1,303 @@
+/* 文件：ui/styles/components.css
+ * 职责：可复用组件（tabs/subtabs/card/inputs/buttons/list）
+ */
+
+/* 顶部 tabs（一级按钮） */
+.tab{
+  height:40px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 10px;
+
+  border-radius:var(--btnRadius);
+  border:var(--border);
+  background:transparent;
+  color:var(--fg);
+
+  font-size:18px;
+  font-weight:400;
+  user-select:none;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.tab.active{
+  background:var(--green2);
+  border-color:var(--green2);
+  font-weight:800;
+}
+
+/* 右上角 icon 按钮（正方形） */
+.icon-btn{
+  width:40px;
+  height:40px;
+  border-radius:8px;
+  border:var(--border);
+  background:rgba(255,255,255,0.025);
+  color:var(--fg);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  user-select:none;
+  font-weight:800;
+  font-size:14px;
+  cursor:pointer;
+}
+.icon-btn:hover{
+  background:rgba(255,255,255,0.065);
+}
+#btnTheme{
+  color:var(--green);
+  font-size:13px;
+}
+
+/* logo 占位 */
+.logo-slot{
+  width:40px;
+  height:40px;
+  border-radius:8px;
+  border:var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--green);
+  font-size:12px;
+  font-weight:800;
+  user-select:none;
+}
+
+/* 二级 sub-tabs（胶囊） */
+.subtab{
+  height:36px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 26px; /* 你要求左右内边距增加 */
+  border-radius:var(--pillRadius);
+
+  border:var(--border);
+  background:transparent;
+  color:var(--fg);
+
+  font-size:16px;
+  font-weight:400;
+  user-select:none;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.subtab.active{
+  background:var(--olive);
+  border-color:var(--olive);
+  font-weight:800;
+}
+
+/* grid2：两卡片布局；窄屏自动单列 */
+.grid2{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(520px, 1fr));
+  gap:16px;
+  align-items:stretch;
+
+  height:100%;
+  min-height:0;
+}
+@media (max-width: 1100px){
+  .grid2{ grid-template-columns:1fr; height:auto; }
+}
+
+/* card：统一圆角12px */
+.card{
+  border:var(--border);
+  border-radius:var(--radius);
+  padding:16px;
+  background:transparent;
+
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+
+  min-width:0;
+  min-height:0;
+}
+@media (min-width: 1101px){
+  .card{ height:100%; }
+}
+
+.card h3{
+  margin:0;
+  font-size:20px;
+  font-weight:800;
+  color:var(--fg);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex:0 0 auto;
+}
+
+.help{
+  width:24px;height:24px;
+  border:var(--border);
+  border-radius:50%;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:800;
+  font-size:14px;
+  color:var(--fg);
+  opacity:0.9;
+  flex:0 0 auto;
+}
+
+/* 绿色药丸标签（你要求：端口/起始地址/结束地址/任务编号/当前数量 都是 008A00 填充） */
+.pill{
+  height:34px;
+  border-radius:var(--pillRadius);
+  display:inline-flex;
+  align-items:center;
+  padding:0 14px;
+  background:var(--green2);
+  color:#fff;
+  font-weight:800;
+  font-size:16px;
+  white-space:nowrap;
+  flex:0 0 auto;
+}
+
+/* 输入框（胶囊） */
+.input{
+  height:34px;
+  border:var(--border);
+  border-radius:var(--pillRadius);
+  background:#000;
+  color:#fff;
+  padding:0 12px;
+  text-align:center;
+  font-size:16px;
+  font-weight:800;
+  outline:none;
+  flex:0 0 auto;
+}
+
+/* 常用输入宽度控制 */
+.input-left{ min-width:240px; text-align:left; font-weight:700; }
+.input-num{ width:84px; }
+.input-baud{ width:140px; }
+.input-job{ width:60px; }
+
+/* 行布局 */
+.row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  flex:0 0 auto;
+}
+
+.row-actions{ margin-top:6px; }
+.row-found{ margin-top:10px; }
+.row-bottom{ margin-top:10px; }
+
+/* 按钮 */
+.btn{
+  height:40px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.2);
+  padding:0 18px;
+  font-size:16px;
+  font-weight:800;
+  color:#fff;
+  background:#111;
+  user-select:none;
+  cursor:pointer;
+  flex:0 0 auto;
+}
+.btn.scan{ background:#9b0028; border-color:#9b0028; }
+.btn.reset{ background:#4b00b5; border-color:#4b00b5; }
+
+.btn.btn-small{
+  height:34px;
+  border-radius:999px;
+  padding:0 16px;
+  font-size:14px;
+  font-weight:800;
+  background:#222;
+  border-color:rgba(255,255,255,0.22);
+}
+
+.btn.btn-pill{
+  height:36px;
+  border-radius:999px;
+  width:140px;
+  background:#b0006f;
+  border-color:#b0006f;
+}
+
+/* 右侧头部 */
+.result-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+  flex:0 0 auto;
+}
+
+.mini{
+  font-size:14px;
+  opacity:0.9;
+}
+
+/* 结果列表区域：必须能滚动，不能溢出 card */
+.list{
+  border:1px dashed var(--green);
+  border-radius:var(--radius);
+  padding:14px;
+  overflow:auto;
+
+  min-height:0;
+  flex:1;
+}
+
+/* 空态提示（不画框，不喧宾夺主） */
+.empty-hint{
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:rgba(255,255,255,0.45);
+  font-size:16px;
+  letter-spacing:0.4px;
+  user-select:none;
+}
+
+/* 扫描结果 item */
+.device{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+  flex-wrap:wrap;
+}
+.device .pill{ height:32px; font-size:15px; }
+
+.pill.gray{
+  background:transparent;
+  border:var(--border);
+  color:#fff;
+  font-weight:700;
+}
+
+.raw{
+  width:100%;
+  font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size:12px;
+  opacity:0.88;
+  word-break:break-all;
+  padding:6px 10px;
+  border-radius:10px;
+  border:1px solid rgba(0,255,0,0.35);
+}
+
+
+/* 设备定义库：上下布局（不影响其他 grid2 页面） */
+.subpage.stack .grid2{
+  grid-template-columns: 1fr;
+}

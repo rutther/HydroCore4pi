@@ -1,0 +1,14 @@
+{
+  "id": "dose_pump_a",
+  "name": "加药泵 A",
+  "kind": "relay",
+  "type": "relay",
+  "gpio_pin": 17,
+  "pin": 17,
+  "active_level": "low",
+  "safe_state": "off",
+  "enabled": true,
+  "allow_real_output": false,
+  "allow_real": false,
+  "description": "加药泵 A 的继电器输出，确认接线后再启用真实输出。"
+}

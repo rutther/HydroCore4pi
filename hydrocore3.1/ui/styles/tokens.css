@@ -1,0 +1,35 @@
+/* 文件：ui/styles/tokens.css
+ * 职责：全局变量（tokens），不写布局逻辑
+ * 说明：后续换主题/多语言，只改变量或主题覆盖即可
+ */
+:root{
+  --bg:#000;
+  --fg:#fff;
+
+  --green:#00FF00;
+  --green2:#008A00;   /* 一级选中填充 + pill默认填充 */
+  --olive:#60A917;    /* 二级选中填充 */
+
+  --radius:12px;      /* 卡片/外框统一圆角 */
+  --btnRadius:10px;   /* 一级按钮：非胶囊 */
+  --pillRadius:999px; /* 二级按钮：胶囊 */
+
+  --border:1px solid var(--green);
+
+  /* 尺寸策略：你要求最低宽度 580px */
+  --minStage:580px;
+  --maxStage:1280px;
+
+  /* 外框高度规则：横屏800，竖屏1200 */
+  --shellH:800px;
+  --shellHPortrait:1200px;
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; margin:0; }
+
+body{
+  background:var(--bg);
+  color:var(--fg);
+  font-family:"Noto Sans SC","Microsoft YaHei",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+}

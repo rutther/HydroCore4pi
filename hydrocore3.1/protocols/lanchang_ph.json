@@ -1,0 +1,97 @@
+{
+  "__meta__": { "_float_order": "CDAB" },
+
+  "measurement": {
+    "addr": 1, "type": "float", "access": "read_only",
+    "description": "pH测量值", "label_zh": "pH", "unit": "pH"
+  },
+  "temperature": {
+    "addr": 3, "type": "float", "access": "read_only",
+    "description": "温度测量值", "label_zh": "温度", "unit": "°C"
+  },
+  "current_output": {
+    "addr": 5, "type": "float", "access": "read_only",
+    "description": "4-20mA电流值", "label_zh": "电流输出", "unit": "mA"
+  },
+  "warning": {
+    "addr": 7, "type": "int", "access": "read_only",
+    "description": "报警状态", "label_zh": "报警", "unit": ""
+  },
+
+  "measurement_mode": {
+    "addr": 8, "type": "int", "access": "read_write",
+    "description": "测量模式 00=PH，01=ORP", "label_zh": "测量模式", "unit": ""
+  },
+  "high_limit": {
+    "addr": 10, "type": "float", "access": "read_write",
+    "description": "测量上限", "label_zh": "上限", "unit": "pH"
+  },
+  "low_limit": {
+    "addr": 12, "type": "float", "access": "read_write",
+    "description": "测量下限", "label_zh": "下限", "unit": "pH"
+  },
+  "temp_high_limit": {
+    "addr": 14, "type": "float", "access": "read_write",
+    "description": "温度上限", "label_zh": "温度上限", "unit": "°C"
+  },
+  "temp_low_limit": {
+    "addr": 16, "type": "float", "access": "read_write",
+    "description": "温度下限", "label_zh": "温度下限", "unit": "°C"
+  },
+  "measurement_offset": {
+    "addr": 18, "type": "float", "access": "read_write",
+    "description": "测量值偏移", "label_zh": "测量偏移", "unit": "pH"
+  },
+  "temperature_offset": {
+    "addr": 20, "type": "float", "access": "read_write",
+    "description": "温度偏移", "label_zh": "温度偏移", "unit": "°C"
+  },
+  "damping_coefficient": {
+    "addr": 22, "type": "int", "access": "read_write",
+    "description": "阻尼系数", "label_zh": "阻尼系数", "unit": ""
+  },
+
+  "slave_address": {
+    "addr": 25, "type": "int", "access": "read_write",
+    "description": "从机地址", "label_zh": "从机地址", "unit": ""
+  },
+  "baud_rate": {
+    "addr": 26, "type": "int", "access": "read_write",
+    "description": "波特率", "label_zh": "波特率", "unit": "bps",
+    "enum_map": { "0": 2400, "1": 4800, "2": 9600, "3": 19200, "4": 38400, "5": 43000, "6": 57600 }
+  },
+  "restore_factory": {
+    "addr": 27, "type": "int", "access": "write_only",
+    "description": "恢复出厂设置", "label_zh": "恢复出厂(写1)", "unit": ""
+  },
+
+  "orp_offset": {
+    "addr": 48, "type": "float", "access": "read_write",
+    "description": "ORP偏移", "label_zh": "ORP偏移", "unit": "mV"
+  },
+  "calibration_slope": {
+    "addr": 52, "type": "float", "access": "read_write",
+    "description": "斜率校正", "label_zh": "斜率校正", "unit": ""
+  },
+  "first_standard": {
+    "addr": 54, "type": "int", "access": "read_write",
+    "description": "第一点标准液", "label_zh": "第一点标准液", "unit": ""
+  },
+  "second_standard": {
+    "addr": 56, "type": "int", "access": "read_write",
+    "description": "第二点标准液", "label_zh": "第二点标准液", "unit": ""
+  },
+  "manual_temperature": {
+    "addr": 58, "type": "float", "access": "read_write",
+    "description": "手动温度", "label_zh": "手动温度", "unit": "°C"
+  },
+
+  "zero_calibration": {
+    "addr": 62, "type": "int", "access": "write_only",
+    "description": "执行零点校正", "label_zh": "零点校正(写触发)", "unit": ""
+  },
+  "slope_calibration": {
+    "addr": 63, "type": "int", "access": "write_only",
+    "description": "执行斜率校正", "label_zh": "斜率校正(写触发)", "unit": ""
+  }
+}

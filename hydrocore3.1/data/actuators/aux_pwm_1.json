@@ -1,0 +1,16 @@
+{
+  "id": "aux_pwm_1",
+  "name": "PWM 通道 1",
+  "kind": "pwm",
+  "type": "pwm",
+  "gpio_pin": 18,
+  "pin": 18,
+  "active_level": "high",
+  "safe_state": "off",
+  "pwm_frequency": 1000,
+  "safe_duty": 0,
+  "enabled": true,
+  "allow_real_output": false,
+  "allow_real": false,
+  "description": "预留 PWM 输出通道。"
+}

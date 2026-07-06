@@ -1,0 +1,131 @@
+{
+  "__meta__": {
+    "_float_order": "CDAB"
+  },
+  "corrosion_rate": {
+    "addr": 0,
+    "type": "float",
+    "length": 2,
+    "access": "read_only",
+    "description": "腐蚀率值 (0x0000)",
+    "label_zh": "腐蚀率",
+    "unit": "mm/a"
+  },
+  "mv_value": {
+    "addr": 2,
+    "type": "float",
+    "length": 2,
+    "access": "read_only",
+    "description": "mV值/电位 (0x0002) 范围:-1250~1250mV",
+    "label_zh": "电位",
+    "unit": "mV"
+  },
+  "corrosion_rate_factor": {
+    "addr": 6,
+    "type": "float",
+    "length": 2,
+    "access": "read_write",
+    "description": "腐蚀率系数 (0x0006)",
+    "label_zh": "腐蚀率系数",
+    "unit": ""
+  },
+  "offset": {
+    "addr": 8,
+    "type": "float",
+    "length": 2,
+    "access": "read_write",
+    "description": "偏移量 (0x0008)",
+    "label_zh": "偏移量",
+    "unit": ""
+  },
+  "ma_high_point": {
+    "addr": 32,
+    "type": "float",
+    "length": 2,
+    "access": "read_only",
+    "description": "4-20mA高点值(读) (0x0020)",
+    "label_zh": "4-20mA高点(读)",
+    "unit": ""
+  },
+  "baud_rate": {
+    "addr": 18,
+    "type": "int",
+    "length": 1,
+    "access": "read_only",
+    "description": "波特率(读) ",
+    "label_zh": "波特率(读)",
+    "unit": "bps"
+  },
+  "slave_address": {
+    "addr": 20,
+    "type": "float",
+    "length": 2,
+    "access": "read_only",
+    "description": "从机地址(读，float形式) ",
+    "label_zh": "从机地址(读)",
+    "unit": ""
+  },
+  "write_baud_rate": {
+    "addr": 18,
+    "type": "int",
+    "length": 1,
+    "access": "write_only",
+    "description": "修改波特率(写) ",
+    "label_zh": "修改波特率(写)",
+    "unit": "bps",
+    "enum_map": {
+      "0": 2400,
+      "1": 4800,
+      "2": 9600,
+      "3": 19200,
+      "4": 38400,
+      "5": 43000,
+      "6": 57600
+    }
+  },
+  "write_slave_address": {
+    "addr": 20,
+    "type": "int",
+    "length": 1,
+    "access": "write_only",
+    "description": "修改从机地址(写int)",
+    "label_zh": "修改从机地址(写)",
+    "unit": ""
+  },
+  "float_order": {
+    "addr": 50,
+    "type": "int",
+    "length": 1,
+    "access": "write_only",
+    "description": "调整浮点顺序(写) ",
+    "label_zh": "浮点字节序(写)",
+    "unit": ""
+  },
+  "restore_defaults": {
+    "addr": 100,
+    "type": "int",
+    "length": 1,
+    "access": "write_only",
+    "description": "恢复默认值(写1确认) (0x0064)",
+    "label_zh": "恢复默认值(写1)",
+    "unit": ""
+  },
+  "restore_baud_and_address": {
+    "addr": 9999,
+    "type": "int",
+    "length": 1,
+    "access": "write_only",
+    "description": "恢复波特率和地址(写1确认) (0x270F)",
+    "label_zh": "恢复波特率和地址(写1)",
+    "unit": ""
+  },
+  "write_ma_high_point": {
+    "addr": 20,
+    "type": "float",
+    "length": 2,
+    "access": "write_only",
+    "description": "修改4-20mA高点值(写float)",
+    "label_zh": "修改4-20mA高点(写)",
+    "unit": ""
+  }
+}

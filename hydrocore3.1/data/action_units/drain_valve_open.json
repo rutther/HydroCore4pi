@@ -1,0 +1,13 @@
+{
+  "id": "drain_valve_open",
+  "name": "打开排水阀",
+  "enabled": true,
+  "output_id": "drain_valve",
+  "output_name": "排水阀",
+  "mode": "relay_state",
+  "params": {
+    "command": "on"
+  },
+  "summary": "打开排水阀",
+  "description": "打开排水阀。"
+}

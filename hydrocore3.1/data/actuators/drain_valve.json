@@ -1,0 +1,14 @@
+{
+  "id": "drain_valve",
+  "name": "排水阀",
+  "kind": "relay",
+  "type": "relay",
+  "gpio_pin": 22,
+  "pin": 22,
+  "active_level": "low",
+  "safe_state": "off",
+  "enabled": true,
+  "allow_real_output": false,
+  "allow_real": false,
+  "description": "排水阀的继电器输出。"
+}

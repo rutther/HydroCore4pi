@@ -1,0 +1,13 @@
+{
+  "id": "dose_b_1s",
+  "name": "加药泵 B 运行 1 秒",
+  "enabled": true,
+  "output_id": "dose_pump_b",
+  "output_name": "加药泵 B",
+  "mode": "relay_pulse",
+  "params": {
+    "duration_ms": 1000
+  },
+  "summary": "加药泵 B 运行 1 秒",
+  "description": "用于点动测试或小剂量修正。"
+}

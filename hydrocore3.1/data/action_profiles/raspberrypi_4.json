@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "type": "raspberrypi",
+  "version": "4",
+  "id": "raspberrypi_4_default",
+  "name": "树莓派 4 默认预设",
+  "description": "树莓派 4 GPIO 默认能力模板",
+  "capabilities": {
+    "switch_output_pins": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      16,
+      17,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27
+    ],
+    "pwm_output_pins": [
+      12,
+      13,
+      18,
+      19
+    ],
+    "pwm_freq_hz_range": [
+      50,
+      20000
+    ],
+    "pwm_default_freq_hz": 1000
+  },
+  "defaults": {
+    "switch_open_level": "low"
+  }
+}

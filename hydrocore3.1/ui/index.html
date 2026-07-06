@@ -1,0 +1,551 @@
+﻿<!-- 文件：ui/index.html -->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HydroCore WebUI</title>
+
+  <!-- 视觉tokens（变量） -->
+  <link rel="stylesheet" href="/ui/styles/tokens.css?v=industrial-ui-16" />
+  <link rel="stylesheet" href="/ui/styles/layout.css?v=industrial-ui-16" />
+  <link rel="stylesheet" href="/ui/styles/components.css?v=industrial-ui-16" />
+  <link rel="stylesheet" href="/ui/styles/app.css?v=industrial-ui-16" />
+  <link rel="stylesheet" href="/ui/styles/pages/action_config.css?v=industrial-ui-16" />
+  <link rel="stylesheet" href="/ui/styles/pages/system.css?v=industrial-ui-16" />
+
+  <!-- 主题：默认绿 -->
+  <link id="themeStylesheet" rel="stylesheet" href="/ui/styles/themes/green-cyber.css?v=industrial-ui-16" />
+</head>
+
+<body>
+  <div class="stage">
+    <div class="shell" id="shell">
+
+      <!-- ===== 第一层：全局层（外框 + 顶部tabs + divider + statusTime） ===== -->
+      <div class="top-tabs" role="navigation" aria-label="主导航">
+        <div class="top-left" id="topTabs">
+          <!-- 由 JS 渲染 -->
+        </div>
+
+        <div class="top-right">
+          <!-- 翻译按钮（正方形） -->
+          <button class="icon-btn" id="btnTranslate" type="button" title="语言 / 翻译">译</button>
+          <!-- 主题按钮（正方形） -->
+          <button class="icon-btn" id="btnTheme" type="button" title="切换配色">色</button>
+          <!-- Logo 占位（以后替换为你的Logo） -->
+          <div class="logo-slot" title="Logo 占位">LOGO</div>
+        </div>
+      </div>
+
+      <div class="divider" aria-hidden="true"></div>
+
+      <!-- ===== 第二层：页面层（page-area内切换不同页面；某些页面可没有sub-tabs） ===== -->
+      <div class="page-area" id="pageArea">
+
+        <!-- 页面：硬件配置（有 sub-tabs） -->
+        <section class="page" data-page="hardware" id="page-hardware">
+            <div class="sub-tabs" id="subTabs-hardware" role="tablist" aria-label="硬件配置子导航">
+            <button class="subtab" data-subpage="scan"      type="button"></button>
+            <button class="subtab" data-subpage="sensors"   type="button"></button>
+            <button class="subtab" data-subpage="verify"    type="button"></button>
+            <button class="subtab" data-subpage="plan"      type="button"></button>
+            </div>
+
+
+          <div class="content">
+            <!-- 子页：硬件扫描（唯一实现功能页） -->
+            <div class="subpage" data-subpage="scan" id="subpage-scan">
+              <div class="grid2">
+                <!-- 1.1 扫描当前下位机 -->
+                <div class="card">
+                  <h3><span id="scanTitleLeft"></span> <span class="help" title="用于扫描总线地址并返回任务编号">?</span></h3>
+
+                  <!-- 端口 -->
+                  <div class="row">
+                    <div class="pill" id="lblPort"></div>
+                    <input class="input input-left" id="scanPort" value="/dev/ttyACM0" />
+                  </div>
+
+                  <!-- 起始地址（单独一行） -->
+                  <div class="row">
+                    <div class="pill" id="lblStartAddr"></div>
+                    <input class="input input-num" id="scanStart" value="1" />
+                  </div>
+
+                  <!-- 结束地址（单独一行） -->
+                  <div class="row">
+                    <div class="pill" id="lblEndAddr"></div>
+                    <input class="input input-num" id="scanEnd" value="20" />
+                  </div>
+
+                  <!-- 波特率 -->
+                  <div class="row">
+                    <div class="pill" id="lblBaud"></div>
+                    <input class="input input-baud" id="scanBaud" value="9600" />
+                  </div>
+
+                  <!-- 按钮 -->
+                  <div class="row row-actions">
+                    <button class="btn reset" type="button" id="btnScanReset"></button>
+                    <button class="btn scan" type="button" id="btnScan"></button>
+                  </div>
+
+                  <!-- 当前存在地址数量 -->
+                  <div class="row row-found">
+                    <div class="pill" id="lblFound"></div>
+                    <input class="input input-num" id="scanFound" value="-" readonly />
+                  </div>
+
+                  <div class="mini" id="scanStatus"></div>
+                </div>
+
+                <!-- 1.2 展示扫描结果 -->
+                <div class="card">
+                  <h3><span id="scanTitleRight"></span> <span class="help" title="输入任务编号查询扫描结果">?</span></h3>
+
+                  <div class="result-head">
+                    <div class="row">
+                      <div class="pill" id="lblJobId"></div>
+                      <input class="input input-job" id="scanJobId" value="-" />
+                      <button class="btn btn-small" type="button" id="btnLoadJob"></button>
+                    </div>
+                    <div class="mini" id="scanTimeRange">—</div>
+                  </div>
+
+                  <div class="list" id="scanList">
+                    <!-- 由 JS 渲染 -->
+                  </div>
+
+                  <div class="row row-bottom">
+                    <button class="btn btn-pill" type="button" id="btnToggleRaw"></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 子页：动作配置（空） -->
+            <!-- <div class="subpage" data-subpage="actuators">
+              <div class="empty-hint" data-i18n="hardware.actuators.empty"></div>
+            </div> -->
+            
+
+
+
+
+
+            <!-- 子页：设备定义文件（protocols）管理（可用） -->
+            <div class="subpage stack" data-subpage="sensors" id="subpage-sensors">
+              <div class="grid2">
+
+                <!-- 左：定义文件列表 + 上传 -->
+                <div class="card">
+                  <h3>2.1 设备定义文件 <span class="help" title="来源：内置 protocols/ + 用户 data/protocols_user/">?</span></h3>
+
+
+
+
+
+
+                <div class="row" style="gap:12px;align-items:center;">
+                  <button class="btn btn-pill" type="button" id="btnProtoRefresh"
+                          style="height:36px;border-radius:999px;">
+                    刷新列表
+                  </button>
+
+                  <button class="btn btn-pill" type="button" id="btnProtoUpload"
+                          style="height:36px;border-radius:999px;background:#4b00b5;border-color:#4b00b5;">
+                    导入(JSON)
+                  </button>
+
+                  <!-- 真正的 file input：隐藏 -->
+                  <input id="protoFileInput" type="file" accept=".json,application/json" style="display:none;" />
+
+                  <!-- 状态：跟在按钮后面，同一行占剩余空间 -->
+                  <div class="mini" id="protoStatus"
+                       style="min-height:18px;flex:1;margin:0;opacity:0.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                  </div>
+                </div>
+
+
+
+                  <div class="divider" aria-hidden="true" style="margin:6px 0;"></div>
+
+                  <!-- 两列：内置 / 用户（同一行左右分布） -->
+                  <div class="proto-sources">
+                    <div class="proto-col">
+                      <div class="mini" style="opacity:0.9;">内置（不可删除）</div>
+                      <div class="list proto-list" id="protoListBuiltin"></div>
+                    </div>
+
+                    <div class="proto-col">
+                      <div class="mini" style="opacity:0.9;">用户（可删除）</div>
+                      <div class="list proto-list" id="protoListUser"></div>
+                    </div>
+                  </div>
+
+            
+                
+                </div>
+
+                <!-- 右：详情（JSON + 表格） -->
+                <div class="card">
+                  <h3>2.2 定义详情 <span class="help" title="只读查看 JSON 与字段表格">?</span></h3>
+
+                  <div class="row" style="gap:12px;justify-content:space-between;">
+                    <div class="row" style="gap:10px;">
+                      <div class="pill">名称</div>
+                      <input class="input" id="protoName" value="-" readonly style="min-width:240px;text-align:left;font-weight:700;">
+                      <div class="pill" id="protoSourcePill">来源：-</div>
+                    </div>
+
+                    <button class="btn btn-pill" type="button" id="btnProtoDelete"
+                            style="height:36px;border-radius:999px;background:#9b0028;border-color:#9b0028;display:none;">
+                      删除（用户）
+                    </button>
+                  </div>
+
+                  <div class="mini" style="margin-top:6px;opacity:0.9;">JSON（只读）</div>
+                  <pre id="protoJson"
+                       style="margin:6px 0 0 0;border:1px dashed rgba(0,255,0,0.55);
+                              border-radius:12px;padding:12px;min-height:160px;
+                              max-height:260px;overflow:auto;color:#fff;background:rgba(0,0,0,0.35);">（未选择）</pre>
+
+                  <div class="mini" style="margin-top:10px;opacity:0.9;">字段表格（寄存器映射）</div>
+                  <div class="list" id="protoTable" style="margin-top:6px;"></div>
+                </div>
+
+              </div>
+            </div>
+
+
+
+
+
+
+
+            <!-- 子页：设备定义（poll plan 编辑 + 单次测试） -->
+            <div class="subpage" data-subpage="verify" id="subpage-verify">
+
+
+
+                
+              <!-- 顶部栏：当前存在配置地址（来自 poll plan） -->
+              <div class="verify-top">
+                <div class="verify-top-title">
+                  当前存在配置地址：
+                </div>
+
+                <div id="defAddrPills" class="verify-top-pills"></div>
+
+                <!-- 新增地址：两步确认 -->
+                <button id="defAddrPlus" class="btn btn-pill" type="button"
+                        style="height:36px;border-radius:999px;">
+                增加地址
+                </button>
+
+                <div id="defAddrAddBox" class="verify-addbox" style="display:none;">
+                  <input id="defAddrInput" class="input input-num" placeholder="新地址(1~254)" style="width:140px;" />
+                  <button id="defAddrConfirm" class="btn btn-pill" type="button"
+                          style="height:36px;border-radius:999px;background:#0b5cff;border-color:#0b5cff;">
+                    ✓
+                  </button>
+                  <button id="defAddrCancel" class="btn btn-pill" type="button"
+                          style="height:36px;border-radius:999px;background:#333;border-color:#333;">
+                    ×
+                  </button>
+                </div>
+
+                <div class="mini" id="defAddrStatus" style="min-height:18px;"></div>
+              </div>
+
+
+
+
+
+
+                <!-- 上框：编辑 + 测试/提交 -->
+                <div class="card">
+
+                <!-- 第 1 行：当前编辑地址 + 删除 + 厂家方案 -->
+                <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap;">
+                    <div class="pill">当前编辑地址</div>
+                    <input id="defAddrCurrent" class="input input-num"
+                        value="" placeholder="例如 9" style="width:80px;" readonly />
+
+                    <button id="defAddrRemove" class="btn btn-pill" type="button"
+                            style="height:36px;border-radius:999px;background:#9b0028;border-color:#9b0028;width:100px;">
+                    删除
+                    </button>
+
+                    <div style="flex:1;"></div>
+
+                    <div class="pill">定义方案</div>
+                    <select id="defVendor" class="input" style="width:180px;text-align:left;"></select>
+                    <select id="defModel" class="input" style="width:180px;text-align:left;"></select>
+                </div>
+
+                <!-- 第 2 行：端口单独一行 -->
+                <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap;">
+                    <div class="pill">端口</div>
+                    <input id="defPort" class="input input-left" value="/dev/ttyACM0" style="min-width:240px;" />
+                </div>
+
+                <div class="mini" id="defProtoStatus" style="min-height:18px;"></div>
+
+                <div class="divider" aria-hidden="true" style="margin:6px 0;"></div>
+
+                <div class="mini" style="opacity:0.9;">实时数据预览（测试后回填数值）</div>
+                <div id="defRows" class="def-rows"></div>
+
+                <button id="defRowAdd" class="btn btn-pill" type="button"
+                        style="margin-top:10px;height:44px;border-radius:12px;">
+                    + 增加条目
+                </button>
+
+                <div class="row" style="margin-top:14px;align-items:center;">
+                    <button id="defTest" class="btn" type="button"
+                            style="background:#0b5cff;border-color:#0b5cff;width:160px;">
+                    测试
+                    </button>
+
+                    <div style="flex:1;"></div>
+
+                    <div class="mini" style="font-size:18px;font-weight:800;opacity:0.9;">确认无误后点击</div>
+
+                    <button id="defSubmit" class="btn" type="button"
+                            style="background:#9b0028;border-color:#9b0028;width:180px;">
+                    提交配置
+                    </button>
+                </div>
+                </div>
+
+
+
+
+
+              
+              <!-- 下框：单次测试数据 -->
+              <div class="card">
+                <h3>单次测试数据 <span class="help" title="展示本次测试的原始返回（含失败原因/hex 等）">?</span></h3>
+                <pre id="defTestRaw"
+                     style="margin:0;border:1px dashed rgba(0,255,0,0.55);
+                            border-radius:12px;padding:12px;min-height:180px;
+                            overflow:auto;color:#fff;background:rgba(0,0,0,0.35);">（暂无）</pre>
+              </div>
+
+            </div>
+
+
+
+
+
+
+            <!-- 子页：数据采集（__meta__ 编辑 + plans 概览 + 原始 JSON） -->
+            <div class="subpage" data-subpage="plan" id="subpage-plan">
+
+
+              <!-- Poller 运行状态 + 启停控制（新增） -->
+              <!-- <div class="card" id="pollerCard" style="margin-bottom:12px;"> -->
+              <div class="poller-bar" id="pollerCard" style="margin-bottom:12px;">
+
+
+                <h3>数据采集任务 <span class="help" title="采集中会独占串口；需在此停止采集后，才能进行扫描/测试/写入等操作">?</span></h3>
+
+                <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap;">
+                  <div class="pill">状态</div>
+                  <div class="pill gray" id="pollerStatusPill">unknown</div>
+
+                  <button class="btn btn-pill" type="button" id="btnPollerStart"
+                          style="height:36px;border-radius:999px;background:#0b5cff;border-color:#0b5cff;">
+                    启动采集
+                  </button>
+
+                  <button class="btn btn-pill" type="button" id="btnPollerStop"
+                          style="height:36px;border-radius:999px;background:#9b0028;border-color:#9b0028;">
+                    停止采集
+                  </button>
+
+                  <div class="mini" id="pollerStatusText"
+                      style="min-height:18px;flex:1;margin:0;opacity:0.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                  </div>
+                </div>
+              </div>
+              
+              
+              <div class="grid2">
+
+                <!-- 上：全局元参数（__meta__） -->
+                <div class="card">
+                  <h3>数据采集设置（全局） <span class="help" title="对应 tasks/config_poll_plan.json 的 __meta__">?</span></h3>
+
+
+
+
+
+
+
+
+
+                  <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap;">
+                    <button class="btn btn-pill" type="button" id="btnPlanMetaRefresh"
+                            style="height:36px;border-radius:999px;">
+                      刷新
+                    </button>
+
+                    <button class="btn btn-pill" type="button" id="btnPlanMetaEdit"
+                            style="height:36px;border-radius:999px;background:#4b00b5;border-color:#4b00b5;">
+                      编辑
+                    </button>
+
+                    <button class="btn btn-pill" type="button" id="btnPlanMetaCancel"
+                            style="height:36px;border-radius:999px;background:#333;border-color:#333;" disabled>
+                      取消
+                    </button>
+
+                    <button class="btn btn-pill" type="button" id="btnPlanMetaSave"
+                            style="height:36px;border-radius:999px;background:#9b0028;border-color:#9b0028;" disabled>
+                      保存
+                    </button>
+
+                    <div class="mini" id="planMetaStatus"
+                         style="min-height:18px;flex:1;margin:0;opacity:0.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    </div>
+                  </div>
+
+                  <div class="divider" aria-hidden="true" style="margin:10px 0;"></div>
+
+                  <div class="plan-meta-grid">
+                    <div class="plan-meta-row">
+                      <div class="pill">默认采样间隔</div>
+                      <input id="metaDefaultSampling" class="input input-num" style="width:140px;" placeholder="例如 3" readonly />
+                      <div class="mini">秒</div>
+                    </div>
+
+                    <div class="plan-meta-row">
+                      <div class="pill">默认落库周期</div>
+                      <input id="metaDefaultPersist" class="input input-num" style="width:140px;" placeholder="例如 10" readonly />
+                      <div class="mini">秒</div>
+                    </div>
+
+                    <div class="plan-meta-row">
+                      <div class="pill">默认小数位数</div>
+                      <input id="metaDefaultRound" class="input input-num" style="width:140px;" placeholder="例如 3" readonly />
+                      <div class="mini">位</div>
+                    </div>
+
+                    <div class="plan-meta-row">
+                      <div class="pill">对齐墙钟时间</div>
+                      <select id="metaAlignWall" class="input" style="width:160px;text-align:left;" disabled>
+                        <option value="true">true</option>
+                        <option value="false">false</option>
+                      </select>
+                      <div class="mini">bool</div>
+                    </div>
+
+                    <div class="plan-meta-row">
+                      <div class="pill">数据保留天数</div>
+                      <input id="metaRetentionDays" class="input input-num" style="width:140px;" placeholder="例如 400" readonly />
+                      <div class="mini">天</div>
+                    </div>
+
+                    <div class="plan-meta-row">
+                      <div class="pill">最大库容量</div>
+                      <input id="metaMaxDbMb" class="input input-num" style="width:140px;" placeholder="例如 10240" readonly />
+                      <div class="mini">MB</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 下：plans 概览 + 原始 JSON -->
+                <div class="card">
+                  <h3>当前采集对象概览 <span class="help" title="只读展示 plans[]，对象编辑在“采集对象/设备定义”页完成">?</span></h3>
+
+                  <div class="mini" id="planListHint" style="opacity:0.85;">
+                    （只读）每个 address 是硬件唯一标识；这里用于确认当前系统会采哪些地址与字段数。
+                  </div>
+
+                  <div class="list" id="planEntriesList" style="margin-top:10px;"></div>
+
+                  <div class="divider" aria-hidden="true" style="margin:10px 0;"></div>
+
+                  <div class="row" style="gap:12px;align-items:center;">
+                    <button class="btn btn-pill" type="button" id="btnPlanRawToggle"
+                            style="height:36px;border-radius:999px;">
+                      JSON
+                    </button>
+
+                    <div class="mini" id="planRawStatus" style="min-height:18px;opacity:0.85;"></div>
+                  </div>
+
+                  <pre id="planRawBox"
+                       style="display:none;margin:10px 0 0 0;border:1px dashed rgba(0,255,0,0.55);
+                              border-radius:12px;padding:12px;min-height:180px;max-height:380px;
+                              overflow:auto;color:#fff;background:rgba(0,0,0,0.35);"></pre>
+                </div>
+
+              </div>
+            </div>
+
+
+
+
+
+
+
+          </div>
+        </section>
+
+        <!-- 页面：数据仪表 -->
+        <section class="page" data-page="dashboard" id="page-dashboard">
+          <div class="content">
+            <div id="dashboardRoot"></div>
+          </div>
+        </section>
+
+        <!-- 页面：动作配置 -->
+        <section class="page" data-page="action_config" id="page-action_config">
+          <div class="content">
+            <div id="actionConfigRoot"></div>
+          </div>
+        </section>
+
+        <!-- 页面：任务管理（空） -->
+        <section class="page" data-page="tasks" id="page-tasks">
+          <div class="content">
+            <div id="taskPageRoot"></div>
+          </div>
+        </section>
+
+
+
+        
+
+        <!-- 页面：系统设置（空） -->
+        <section class="page" data-page="system" id="page-system">
+          <div class="content">
+            <div id="systemRoot"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- 第一层：全局时间显示（置底居中） -->
+      <div class="statusbar" id="statusTime">TIME --:--:--</div>
+    </div>
+  </div>
+
+  <!-- 第一层：全局时间显示（置底居中）
+  <div class="statusbar" id="statusTime">TIME --:--:--</div>
+    </div>
+  </div> -->
+
+  <!-- ECharts（本地离线版，挂到 window.echarts） -->
+   <!-- 暂时修改 -->
+  <!-- <script src="/ui/js/lib/echarts.min.js"></script> -->
+   <!-- <script src="/ui/lab/lib/echarts.min.js"></script> -->
+    <!-- <script type="module" src="/ui/js/app.js"></script> -->
+
+  <!-- 入口脚本（ES Module，原生JS） -->
+  <script type="module" src="/ui/js/app.js?v=industrial-ui-16"></script>
+</body>
+</html>

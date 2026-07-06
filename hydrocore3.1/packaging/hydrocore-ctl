@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+case "${1:-status}" in
+  status)
+    systemctl status hydrocore --no-pager
+    ;;
+  start|stop|restart)
+    systemctl "$1" hydrocore
+    ;;
+  logs)
+    journalctl -u hydrocore -n "${2:-120}" --no-pager
+    ;;
+  url)
+    port="$(sed -n 's/^HYDROCORE_PORT=//p' /etc/hydrocore/hydrocore.env | tail -n 1)"
+    ip="$(hostname -I | awk '{print $1}')"
+    echo "http://${ip:-127.0.0.1}:${port:-5000}/ui/"
+    ;;
+  *)
+    echo "Usage: hydrocore-ctl {status|start|stop|restart|logs [n]|url}" >&2
+    exit 2
+    ;;
+esac
+

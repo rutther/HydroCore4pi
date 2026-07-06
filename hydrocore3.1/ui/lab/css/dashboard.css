@@ -1,0 +1,526 @@
+/* 文件：ui/lab/css/dashboard.css */
+/* 目标：710px 壳高度；按钮移入 controls；移除多余说明行后布局更紧凑 */
+
+:root{
+  --bg:#080b0f;
+  --panel:#11161d;
+  --panel2:#0b0f14;
+  --field:#0d131a;
+  --field2:#151b23;
+  --fg:#edf2f7;
+  --muted:rgba(226,232,240,0.62);
+  --line:rgba(143,158,178,0.16);
+  --line2:rgba(143,158,178,0.28);
+  --primary:#4b8dff;
+  --primary2:#2f73d9;
+  --primarySoft:rgba(75,141,255,0.15);
+  --warn:#d6a73c;
+  --good:#22c994;
+  --bad:#f05f73;
+}
+
+html, body{
+  height:100%;
+  margin:0;
+  background:var(--bg);
+  color:var(--fg);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+*{
+  scrollbar-width:thin;
+  scrollbar-color:rgba(126,143,166,0.62) rgba(8,11,15,0.65);
+}
+
+*::-webkit-scrollbar{
+  width:10px;
+  height:10px;
+}
+
+*::-webkit-scrollbar-track{
+  background:rgba(255,255,255,0.03);
+  border-radius:8px;
+}
+
+*::-webkit-scrollbar-thumb{
+  background:rgba(126,143,166,0.58);
+  border:2px solid rgba(8,11,15,0.88);
+  border-radius:8px;
+}
+
+*::-webkit-scrollbar-thumb:hover{
+  background:rgba(158,176,199,0.72);
+}
+
+.stage{
+  height:100%;
+  display:flex;
+  align-items:stretch;
+  justify-content:stretch;
+  padding:0;
+  box-sizing:border-box;
+}
+
+.shell{
+  width:100%;
+  height:100%;
+  max-width:none;
+  max-height:none;
+  background:var(--panel2);
+  border:0;
+  border-radius:0;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+
+@media (max-width: 1320px){
+  .shell{
+    width:100%;
+    height:100%;
+    max-width:none;
+    max-height:none;
+    border-radius:0;
+  }
+}
+
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 14px; /* 稍微瘦一点 */
+  border-bottom:1px solid var(--line);
+  background: linear-gradient(180deg, rgba(18,22,28,1), rgba(15,19,24,1));
+}
+
+.brand-title{
+  font-weight:900;
+  font-size:14px;
+  letter-spacing:0.2px;
+}
+
+.brand-sub{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:4px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:920px;
+}
+
+.body{
+  flex:1;
+  min-height:0;
+  display:grid;
+  grid-template-columns:300px minmax(0, 1fr);
+  gap:10px;
+  padding:0 8px 2px 8px;
+  box-sizing:border-box;
+}
+
+@media (max-width: 760px){
+  .body{
+    grid-template-columns:1fr;
+    grid-template-rows: 320px 1fr;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1100px){
+  .stage{ padding:8px; }
+  .body{ grid-template-columns:260px minmax(0, 1fr); gap:8px; padding:0 8px 2px 8px; }
+  .left{ padding:8px; }
+  .main{ padding:0; }
+  .search{ gap:6px; }
+  .search .input{ min-width:0; }
+  .btn{ padding:0 10px; }
+  .controls{ padding:8px; }
+  .controls-row{ gap:8px; }
+  .tune-row,
+  .action-row{ margin-top:8px; }
+  .pillhead{ padding:0 12px; }
+  .pillcontent{ gap:6px; padding-right:8px; }
+  .pillbtn{ padding:0 10px; }
+  .item{ padding:9px; }
+  .name{ max-width:135px; }
+  .val{ font-size:17px; }
+  .delta{ font-size:11px; }
+  .freshness{ max-width:150px; margin-left:auto; }
+  .action-row #chartStatus{
+    flex:1 0 100%;
+    max-width:100%;
+  }
+  .chart-wrap{ min-height:260px; margin-top:0; }
+}
+
+/* ===== 通用控件 ===== */
+.btn{
+  height:30px;
+  padding:0 12px;
+  border-radius:8px;
+  border:1px solid var(--line2);
+  background:rgba(255,255,255,0.025);
+  color:var(--fg);
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+}
+.btn:hover{
+  border-color:rgba(126,166,255,0.55);
+  background:rgba(75,141,255,0.10);
+}
+.btn-primary{
+  border-color:rgba(75,141,255,0.72);
+  background:rgba(75,141,255,0.16);
+  box-shadow:0 0 0 1px rgba(75,141,255,0.10) inset;
+}
+.btn-ghost{ background:transparent; }
+
+.input{
+  height:30px;
+  border-radius:8px;
+  border:1px solid var(--line2);
+  background:var(--field);
+  color:var(--fg);
+  padding:0 12px;
+  font-size:12px;
+  outline:none;
+  box-sizing:border-box;
+}
+.input[type="datetime-local"]{
+  color-scheme:dark;
+  font-family:"Microsoft YaHei","PingFang SC",system-ui,-apple-system,Segoe UI,sans-serif;
+  font-weight:900;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:0;
+  padding-right:38px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23bac7d8' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4M16 2v4M4 10h16M6 5h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z'/%3E%3C/svg%3E");
+  background-position:right 12px center;
+  background-repeat:no-repeat;
+  background-size:15px 15px;
+}
+.input[type="datetime-local"]:hover{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23e0e7f2' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4M16 2v4M4 10h16M6 5h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z'/%3E%3C/svg%3E");
+}
+.input[type="datetime-local"]::-webkit-calendar-picker-indicator{
+  cursor:pointer;
+  height:100%;
+  margin-right:-34px;
+  opacity:0;
+  width:30px;
+}
+.input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover{
+  opacity:0;
+}
+.input:focus{
+  border-color:rgba(75,141,255,0.78);
+  box-shadow:0 0 0 2px rgba(75,141,255,0.16);
+}
+.input::placeholder{ color:rgba(226,232,240,0.42); }
+.select{
+  padding-right:10px;
+  color-scheme:dark;
+  background-color:var(--field);
+}
+.select option{
+  background:var(--field2);
+  color:var(--fg);
+}
+
+.mini{
+  font-size:12px;
+  color:var(--muted);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* ===== 左侧 ===== */
+.left{
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  background:var(--panel);
+  overflow:hidden;
+}
+.left-head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:10px;
+}
+.left-title{ font-size:13px; font-weight:900; }
+
+.search{
+  display:flex;
+  gap:10px;
+  margin-top:10px;
+}
+
+.series-list{
+  margin-top:12px;
+  flex:1;
+  min-height:0;
+  overflow:auto;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding-right:4px;
+}
+
+/* ticker item */
+.item{
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:10px;
+  background:var(--panel);
+  cursor:pointer;
+  user-select:none;
+  position:relative;
+}
+.item:hover{
+  border-color:rgba(126,166,255,0.38);
+  background:#131a23;
+}
+.item.active{
+  border-color:rgba(75,141,255,0.72);
+  background:linear-gradient(90deg, rgba(75,141,255,0.12), rgba(17,22,29,1) 42%);
+  box-shadow:0 0 0 1px rgba(75,141,255,0.10) inset;
+}
+.item.active::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:10px;
+  bottom:10px;
+  width:3px;
+  border-radius:0 3px 3px 0;
+  background:var(--primary);
+}
+.item-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.item-left{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+.dot{
+  width:10px;height:10px;
+  border-radius:999px;
+  border:1px solid var(--line2);
+  flex:0 0 auto;
+}
+.name{
+  font-size:12px;
+  font-weight:900;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:170px;
+}
+.unit{
+  font-size:12px;
+  color:rgba(226,232,240,0.55);
+  font-weight:900;
+  margin-left:6px;
+}
+.item-mid{
+  margin-top:8px;
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+}
+.val{ font-size:18px; font-weight:900; letter-spacing:0.2px; }
+.delta{ font-size:12px; font-weight:900; }
+.up{ color:var(--good); }
+.down{ color:var(--bad); }
+.muted{ color:var(--muted); }
+.item-sub{
+  margin-top:6px;
+  font-size:12px;
+  color:rgba(226,232,240,0.60);
+}
+
+/* ===== main ===== */
+.main{
+  padding:0;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  background:var(--panel2);
+}
+
+.controls{
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--panel);
+  padding:10px;
+}
+
+.controls-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.mode-row{ align-items:flex-start; }
+.tune-row{ margin-top:10px; }
+
+/* ✅ 动作行独占一行（按需求 1） */
+.action-row{
+  margin-top:10px;
+  padding-top:8px;
+  border-top:1px solid rgba(143,158,178,0.16);
+}
+.action-row #chartStatus{
+  max-width:520px;
+}
+
+.freshness{
+  flex:0 0 auto;
+  max-width:260px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:12px;
+  font-weight:900;
+  color:rgba(226,232,240,0.78);
+}
+.freshness.ok{ color:var(--good); }
+.freshness.warn{ color:var(--warn); }
+.freshness.bad{ color:var(--bad); }
+
+/* ===== 展开药丸 ===== */
+.mode-pill{
+  display:flex;
+  align-items:center;
+  height:34px;
+  border:1px solid rgba(143,158,178,0.22);
+  border-radius:8px;
+  padding:3px;
+  background:rgba(9,14,20,0.86);
+  overflow:visible;
+  gap:3px;
+}
+.mode-pill.active{
+  border-color:rgba(143,158,178,0.30);
+  box-shadow:none;
+}
+.mode-pill.replay.active{
+  border-color:rgba(143,158,178,0.30);
+  box-shadow:none;
+}
+.pillhead{
+  height:28px;
+  min-width:54px;
+  padding:0 12px;
+  border:0;
+  background:transparent;
+  color:rgba(226,232,240,0.76);
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+  white-space:nowrap;
+  border-radius:6px;
+}
+.mode-pill.active .pillhead{
+  background:transparent;
+  color:rgba(237,242,247,0.92);
+}
+.pillhead-replay{ color:rgba(226,232,240,0.92); }
+.pillhead::after{
+  content:"";
+  display:block;
+  width:1px;
+  height:18px;
+  margin-left:10px;
+  background:rgba(143,158,178,0.22);
+}
+.pillhead{
+  display:flex;
+  align-items:center;
+}
+.mode-pill:not(.active) .pillhead::after{
+  display:none;
+}
+
+.pillcontent{
+  display:none;
+  align-items:center;
+  gap:2px;
+  padding:0;
+  height:28px;
+}
+.mode-pill.active .pillcontent{ display:flex; }
+
+.pillbtn{
+  height:28px;
+  min-width:48px;
+  padding:0 10px;
+  border-radius:6px;
+  border:0;
+  background:transparent;
+  color:var(--fg);
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.pillbtn:hover{
+  background:rgba(143,158,178,0.13);
+}
+.pillbtn.active{
+  background:linear-gradient(180deg, rgba(75,141,255,0.72), rgba(47,115,217,0.58));
+  color:#fff;
+  box-shadow:0 1px 0 rgba(255,255,255,0.16) inset, 0 0 0 1px rgba(75,141,255,0.24);
+}
+
+/* 回放域 */
+.range-item{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.tag{
+  height:26px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 10px;
+  border-radius:8px;
+  border:1px solid var(--line2);
+  background:rgba(255,255,255,0.025);
+  font-size:12px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.replay-hint{
+  margin-left:6px;
+  max-width:200px;
+  height:14px;
+  line-height:14px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* 图表：由于壳变矮，min-height 下调一点 */
+.chart-wrap{
+  flex:1;
+  min-height:320px;
+  margin-top:0;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--panel);
+  overflow:hidden;
+}
+.chart{ width:100%; height:100%; }

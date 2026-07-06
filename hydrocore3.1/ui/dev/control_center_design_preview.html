@@ -1,0 +1,1385 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HydroCore 3.1 控制中心设计预演</title>
+  <style>
+    :root{
+      --bg:#000;
+      --panel:#050708;
+      --panel-2:#090d0f;
+      --panel-3:#0d1214;
+      --line:rgba(0,255,0,.26);
+      --line-strong:rgba(0,255,0,.58);
+      --text:#fff;
+      --muted:rgba(255,255,255,.68);
+      --blue:#2f96ff;
+      --blue-soft:rgba(47,150,255,.16);
+      --green:#6ef4b3;
+      --green-soft:rgba(110,244,179,.14);
+      --amber:#f7d16b;
+      --amber-soft:rgba(247,209,107,.12);
+      --red:#ff8f8f;
+      --red-soft:rgba(255,143,143,.12);
+      --magenta:#d00686;
+      --radius:10px;
+      --font:"Noto Sans SC","Microsoft YaHei","Segoe UI",sans-serif;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:var(--font);
+    }
+
+    body{
+      padding:20px;
+      display:grid;
+      gap:16px;
+      justify-content:center;
+    }
+
+    .meta{
+      width:min(1280px, calc(100vw - 40px));
+      display:grid;
+      gap:10px;
+    }
+
+    .meta h1{
+      margin:0;
+      font-size:26px;
+      font-weight:900;
+    }
+
+    .meta p{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.6;
+    }
+
+    .picker{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+
+    .pick{
+      padding:8px 12px;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:999px;
+      background:rgba(255,255,255,.05);
+      color:var(--muted);
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .pick.active{
+      border-color:var(--blue);
+      background:var(--blue-soft);
+      color:#fff;
+    }
+
+    .canvas-stack{
+      display:grid;
+      gap:24px;
+    }
+
+    .screen-label{
+      width:min(1280px, calc(100vw - 40px));
+      color:var(--muted);
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .shell{
+      border:1px solid var(--line-strong);
+      border-radius:12px;
+      background:linear-gradient(180deg, rgba(6,10,12,.96), rgba(4,7,8,.98));
+      overflow:hidden;
+      box-shadow:0 0 0 1px rgba(0,255,0,.08) inset;
+    }
+
+    .shell.landscape{
+      width:1280px;
+      height:800px;
+    }
+
+    .shell.portrait{
+      width:800px;
+      height:1200px;
+    }
+
+    .frame{
+      height:100%;
+      padding:10px;
+      display:grid;
+      grid-template-rows:auto auto 1fr auto;
+      gap:8px;
+      position:relative;
+    }
+
+    .top-tabs{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+      padding:4px 8px 0;
+    }
+
+    .top-tabs .right{
+      margin-left:auto;
+      display:flex;
+      gap:8px;
+    }
+
+    .tab{
+      min-height:42px;
+      padding:0 16px;
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:10px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      background:transparent;
+      color:#fff;
+      font-size:15px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .tab.active{
+      background:rgba(47,150,255,.78);
+      border-color:rgba(47,150,255,.92);
+    }
+
+    .dot-btn{
+      width:42px;
+      height:42px;
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:10px;
+      display:grid;
+      place-items:center;
+      font-weight:900;
+      color:#fff;
+    }
+
+    .divider{
+      height:1px;
+      margin:0 8px;
+      background:var(--line-strong);
+    }
+
+    .page{
+      min-height:0;
+      overflow:hidden;
+      display:grid;
+      grid-template-rows:auto auto 1fr;
+      gap:12px;
+      padding:0 8px 22px;
+    }
+
+    .subtabs{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .subtab{
+      min-height:36px;
+      padding:0 16px;
+      border:1px solid rgba(47,150,255,.92);
+      border-radius:999px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      color:#fff;
+      font-size:14px;
+      font-weight:800;
+    }
+
+    .subtab.active{
+      background:rgba(47,150,255,.82);
+    }
+
+    .guide{
+      border:1px solid rgba(0,255,0,.18);
+      border-radius:10px;
+      background:rgba(255,255,255,.03);
+      padding:10px 12px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+
+    .guide strong{
+      font-size:14px;
+    }
+
+    .step-pill{
+      min-height:30px;
+      padding:0 10px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:8px;
+      display:inline-flex;
+      align-items:center;
+      background:rgba(255,255,255,.04);
+      color:rgba(255,255,255,.88);
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .workspace-3{
+      min-height:0;
+      display:grid;
+      grid-template-columns:280px minmax(0, 1fr) 310px;
+      gap:14px;
+    }
+
+    .workspace-2{
+      min-height:0;
+      display:grid;
+      grid-template-columns:340px minmax(0, 1fr);
+      gap:14px;
+    }
+
+    .card{
+      min-height:0;
+      border:1px solid rgba(47,150,255,.72);
+      border-radius:12px;
+      background:var(--panel);
+      padding:14px;
+      display:grid;
+      gap:12px;
+      align-content:start;
+    }
+
+    .card h2,
+    .card h3,
+    .card h4{
+      margin:0;
+      font-weight:900;
+    }
+
+    .head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+    }
+
+    .head p,
+    .mini{
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.5;
+    }
+
+    .btn-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+
+    .btn{
+      min-height:40px;
+      padding:0 16px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,.16);
+      background:transparent;
+      color:#fff;
+      font-size:14px;
+      font-weight:800;
+    }
+
+    .btn.primary{
+      background:var(--magenta);
+      border-color:var(--magenta);
+    }
+
+    .btn.blue{
+      background:rgba(47,150,255,.86);
+      border-color:rgba(47,150,255,.92);
+    }
+
+    .btn.ghost{
+      border-color:rgba(0,255,0,.3);
+      color:rgba(255,255,255,.86);
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0, 1fr));
+      gap:12px;
+    }
+
+    .stat{
+      min-height:88px;
+      border:1px solid rgba(0,255,0,.16);
+      border-radius:10px;
+      background:rgba(255,255,255,.02);
+      padding:12px 14px;
+      display:grid;
+      align-content:start;
+      gap:6px;
+    }
+
+    .stat span{
+      color:var(--muted);
+      font-size:12px;
+      font-weight:700;
+    }
+
+    .stat strong{
+      font-size:19px;
+      font-weight:900;
+    }
+
+    .list{
+      display:grid;
+      gap:10px;
+      min-height:0;
+      overflow:auto;
+      padding-right:2px;
+    }
+
+    .item{
+      border:1px solid rgba(0,255,0,.18);
+      border-radius:10px;
+      background:rgba(255,255,255,.02);
+      padding:12px;
+      display:grid;
+      gap:6px;
+    }
+
+    .item.active{
+      border-color:#f0b90b;
+      box-shadow:0 0 0 1px rgba(240,185,11,.22) inset;
+    }
+
+    .item-top{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:flex-start;
+    }
+
+    .item-title{
+      font-size:16px;
+      font-weight:900;
+    }
+
+    .badges{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      justify-content:flex-end;
+    }
+
+    .badge{
+      min-height:22px;
+      padding:0 8px;
+      border-radius:6px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.05);
+      display:inline-flex;
+      align-items:center;
+      font-size:11px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .badge.ok{
+      color:var(--green);
+      border-color:rgba(110,244,179,.34);
+    }
+
+    .badge.warn{
+      color:var(--amber);
+      border-color:rgba(247,209,107,.32);
+    }
+
+    .badge.danger{
+      color:var(--red);
+      border-color:rgba(255,143,143,.28);
+    }
+
+    .form{
+      display:grid;
+      gap:12px;
+    }
+
+    .section{
+      border:1px solid rgba(0,255,0,.18);
+      border-radius:10px;
+      background:rgba(255,255,255,.02);
+      padding:12px;
+      display:grid;
+      gap:10px;
+    }
+
+    .section-head{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+    }
+
+    .section-head strong{
+      font-size:15px;
+      font-weight:900;
+    }
+
+    .help{
+      width:22px;
+      height:22px;
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:999px;
+      display:grid;
+      place-items:center;
+      color:rgba(255,255,255,.76);
+      font-size:12px;
+      font-weight:900;
+    }
+
+    .grid-2{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:12px;
+    }
+
+    .field{
+      display:grid;
+      gap:6px;
+    }
+
+    .field.wide{
+      grid-column:1 / -1;
+    }
+
+    .field label{
+      color:rgba(255,255,255,.86);
+      font-size:13px;
+      font-weight:800;
+    }
+
+    .input,
+    .textarea,
+    .select{
+      min-height:38px;
+      padding:9px 12px;
+      border:1px solid rgba(47,150,255,.78);
+      border-radius:10px;
+      background:#040607;
+      color:#fff;
+      font-size:14px;
+      font-weight:700;
+    }
+
+    .textarea{
+      min-height:76px;
+      line-height:1.5;
+    }
+
+    .chips{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+
+    .chip{
+      min-height:34px;
+      padding:0 12px;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:8px;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      font-size:13px;
+      font-weight:800;
+      color:#fff;
+    }
+
+    .chip.active{
+      border-color:rgba(47,150,255,.92);
+      background:rgba(47,150,255,.18);
+    }
+
+    .timeline{
+      display:grid;
+      gap:8px;
+    }
+
+    .line{
+      display:grid;
+      grid-template-columns:44px 1fr 64px;
+      gap:10px;
+      align-items:center;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:700;
+    }
+
+    .bar{
+      height:10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.04);
+      overflow:hidden;
+      position:relative;
+    }
+
+    .bar span{
+      position:absolute;
+      inset:1px auto 1px 1px;
+      border-radius:999px;
+      background:rgba(47,150,255,.78);
+    }
+
+    .checks{
+      display:grid;
+      gap:8px;
+    }
+
+    .check{
+      min-height:40px;
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      background:rgba(255,255,255,.03);
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .switch{
+      width:38px;
+      height:22px;
+      border-radius:999px;
+      background:rgba(255,255,255,.2);
+      position:relative;
+      flex:none;
+    }
+
+    .switch::after{
+      content:"";
+      position:absolute;
+      width:16px;
+      height:16px;
+      border-radius:50%;
+      background:#fff;
+      top:3px;
+      left:3px;
+    }
+
+    .switch.on{
+      background:rgba(47,150,255,.8);
+    }
+
+    .switch.on::after{
+      left:19px;
+    }
+
+    .side-stack{
+      display:grid;
+      gap:12px;
+      align-content:start;
+    }
+
+    .summary-box{
+      border:1px solid rgba(0,255,0,.16);
+      border-radius:10px;
+      background:rgba(255,255,255,.02);
+      padding:12px;
+      display:grid;
+      gap:10px;
+    }
+
+    .summary-row{
+      display:grid;
+      gap:4px;
+    }
+
+    .summary-row span{
+      color:var(--muted);
+      font-size:12px;
+      font-weight:700;
+    }
+
+    .summary-row strong{
+      font-size:14px;
+      line-height:1.5;
+    }
+
+    .status-log{
+      display:grid;
+      gap:10px;
+    }
+
+    .status-log .entry{
+      border:1px solid rgba(255,255,255,.1);
+      border-radius:10px;
+      padding:10px 12px;
+      background:rgba(255,255,255,.03);
+      display:grid;
+      gap:6px;
+    }
+
+    .status-log .entry strong{
+      font-size:13px;
+    }
+
+    .portrait-page{
+      min-height:0;
+      display:grid;
+      grid-template-rows:auto auto auto 1fr auto;
+      gap:12px;
+      padding:0 8px 22px;
+    }
+
+    .portrait-nav{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:10px;
+    }
+
+    .portrait-card{
+      border:1px solid rgba(47,150,255,.7);
+      border-radius:12px;
+      background:var(--panel);
+      padding:14px;
+      display:grid;
+      gap:12px;
+    }
+
+    .steps{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0, 1fr));
+      gap:8px;
+    }
+
+    .step{
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:10px;
+      background:rgba(255,255,255,.03);
+      padding:10px;
+      display:grid;
+      gap:4px;
+    }
+
+    .step.active{
+      border-color:rgba(47,150,255,.86);
+      background:rgba(47,150,255,.14);
+    }
+
+    .step span{
+      color:var(--muted);
+      font-size:12px;
+      font-weight:700;
+    }
+
+    .step strong{
+      font-size:14px;
+      line-height:1.4;
+    }
+
+    .statusbar{
+      position:absolute;
+      left:12px;
+      right:12px;
+      bottom:8px;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      color:rgba(0,255,0,.68);
+      font-size:18px;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      pointer-events:none;
+    }
+  </style>
+</head>
+<body>
+  <section class="meta">
+    <h1>HydroCore 3.1 控制中心设计预演</h1>
+    <p>这版只处理两个现有大页：动作配置、任务计划。保留原系统黑底工业 HMI 外壳，收紧术语、层级和操作流。设计稿先固定目标，再回到真实页面对照实现。</p>
+    <div class="picker">
+      <span class="pick active">横屏 / 动作配置 / 输出设备</span>
+      <span class="pick active">横屏 / 动作配置 / 动作模板</span>
+      <span class="pick active">横屏 / 任务计划</span>
+      <span class="pick active">竖屏 / 任务计划</span>
+    </div>
+  </section>
+
+  <div class="canvas-stack">
+    <div class="screen-label">Screen A · 横屏 1280x800 · 动作配置 / 输出设备</div>
+    <section class="shell landscape">
+      <div class="frame">
+        <div class="top-tabs">
+          <div class="tab">数据仪表</div>
+          <div class="tab">硬件配置</div>
+          <div class="tab active">动作配置</div>
+          <div class="tab">任务计划</div>
+          <div class="tab">系统设置</div>
+          <div class="right">
+            <div class="dot-btn">译</div>
+            <div class="dot-btn">调</div>
+            <div class="dot-btn">LOGO</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="page">
+          <div class="subtabs">
+            <div class="subtab">硬件预设</div>
+            <div class="subtab active">输出设备</div>
+            <div class="subtab">动作模板</div>
+          </div>
+          <div class="guide">
+            <strong>建议顺序</strong>
+            <span class="step-pill">1. 先确认控制板和 GPIO 预设</span>
+            <span class="step-pill">2. 再定义输出设备</span>
+            <span class="step-pill">3. 最后组合成动作模板</span>
+          </div>
+          <div class="workspace-3">
+            <section class="card">
+              <div class="head">
+                <div>
+                  <h3>输出设备</h3>
+                  <p>先定义真实硬件对象，不让用户直接面对 GPIO 表。</p>
+                </div>
+                <button class="btn primary">新建设备</button>
+              </div>
+              <div class="list">
+                <div class="item active">
+                  <div class="item-top">
+                    <div class="item-title">加药泵 A</div>
+                    <div class="badges"><span class="badge ok">继电器</span></div>
+                  </div>
+                  <div class="mini">GPIO 17 · 默认关闭 · 允许人工测试</div>
+                </div>
+                <div class="item">
+                  <div class="item-top">
+                    <div class="item-title">加药泵 B</div>
+                    <div class="badges"><span class="badge ok">继电器</span></div>
+                  </div>
+                  <div class="mini">GPIO 27 · 默认关闭 · 允许人工测试</div>
+                </div>
+                <div class="item">
+                  <div class="item-top">
+                    <div class="item-title">排水阀</div>
+                    <div class="badges"><span class="badge ok">继电器</span></div>
+                  </div>
+                  <div class="mini">GPIO 22 · 默认关闭 · 允许人工测试</div>
+                </div>
+                <div class="item">
+                  <div class="item-top">
+                    <div class="item-title">PWM 通道 1</div>
+                    <div class="badges"><span class="badge warn">PWM</span></div>
+                  </div>
+                  <div class="mini">GPIO 18 · 1000 Hz · 默认占空比 0%</div>
+                </div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="head">
+                <div>
+                  <h2>编辑输出设备</h2>
+                  <p>用设备语言描述：它是谁、接在哪个 GPIO、上电后默认是什么状态。</p>
+                </div>
+                <div class="badges">
+                  <span class="badge ok">已启用</span>
+                  <span class="badge warn">仅模拟</span>
+                </div>
+              </div>
+
+              <div class="form">
+                <div class="section">
+                  <div class="section-head">
+                    <strong>基础信息</strong>
+                    <div class="help">?</div>
+                  </div>
+                  <div class="grid-2">
+                    <div class="field">
+                      <label>设备名称</label>
+                      <div class="input">加药泵 A</div>
+                    </div>
+                    <div class="field">
+                      <label>设备类型</label>
+                      <div class="select">继电器（通断型）</div>
+                    </div>
+                    <div class="field">
+                      <label>GPIO</label>
+                      <div class="input">17</div>
+                    </div>
+                    <div class="field">
+                      <label>默认状态</label>
+                      <div class="select">上电默认关闭</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-head">
+                    <strong>安全与测试</strong>
+                    <div class="help">?</div>
+                  </div>
+                  <div class="checks">
+                    <div class="check"><span>允许人工测试</span><div class="switch on"></div></div>
+                    <div class="check"><span>允许真实输出</span><div class="switch"></div></div>
+                    <div class="check"><span>失联或异常时强制回到安全状态</span><div class="switch on"></div></div>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-head">
+                    <strong>备注</strong>
+                    <div class="help">?</div>
+                  </div>
+                  <div class="textarea">用于酸剂加药泵 A。校准或手动点动时常用，默认不允许真实输出。</div>
+                </div>
+
+                <div class="btn-row">
+                  <button class="btn primary">保存设备</button>
+                  <button class="btn blue">点动测试</button>
+                  <button class="btn ghost">删除设备</button>
+                </div>
+              </div>
+            </section>
+
+            <aside class="side-stack">
+              <div class="card">
+                <h3>接线摘要</h3>
+                <div class="summary-box">
+                  <div class="summary-row">
+                    <span>当前接线</span>
+                    <strong>GPIO 17 · 低电平触发 · 常闭安全态</strong>
+                  </div>
+                  <div class="summary-row">
+                    <span>人工测试</span>
+                    <strong>允许，但默认仅模拟</strong>
+                  </div>
+                  <div class="summary-row">
+                    <span>被谁使用</span>
+                    <strong>2 个动作模板：加药泵 A 运行 1 秒 / 3 秒</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <h3>影响提醒</h3>
+                <div class="status-log">
+                  <div class="entry">
+                    <strong>修改 GPIO 会影响 2 个动作模板</strong>
+                    <span>保存前需要确认这两个模板是否仍然对应正确设备。</span>
+                  </div>
+                  <div class="entry">
+                    <strong>真实输出仍处于总锁定</strong>
+                    <span>当前任何测试都只会记录结果，不会真正驱动继电器。</span>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+        <div class="statusbar">2026-06-17 设计预演 A</div>
+      </div>
+    </section>
+
+    <div class="screen-label">Screen B · 横屏 1280x800 · 动作配置 / 动作模板</div>
+    <section class="shell landscape">
+      <div class="frame">
+        <div class="top-tabs">
+          <div class="tab">数据仪表</div>
+          <div class="tab">硬件配置</div>
+          <div class="tab active">动作配置</div>
+          <div class="tab">任务计划</div>
+          <div class="tab">系统设置</div>
+          <div class="right">
+            <div class="dot-btn">译</div>
+            <div class="dot-btn">调</div>
+            <div class="dot-btn">LOGO</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="page">
+          <div class="subtabs">
+            <div class="subtab">硬件预设</div>
+            <div class="subtab">输出设备</div>
+            <div class="subtab active">动作模板</div>
+          </div>
+          <div class="workspace-3">
+            <section class="card">
+              <div class="head">
+                <div>
+                  <h3>动作模板</h3>
+                  <p>回答“这个设备一次怎么动”。</p>
+                </div>
+                <button class="btn primary">新建模板</button>
+              </div>
+              <div class="list">
+                <div class="item active">
+                  <div class="item-top">
+                    <div class="item-title">加药泵 A 运行 3 秒</div>
+                    <div class="badges"><span class="badge ok">继电器脉冲</span></div>
+                  </div>
+                  <div class="mini">目标设备：加药泵 A</div>
+                </div>
+                <div class="item">
+                  <div class="item-top">
+                    <div class="item-title">排水阀打开 20 秒</div>
+                    <div class="badges"><span class="badge ok">继电器脉冲</span></div>
+                  </div>
+                  <div class="mini">目标设备：排水阀</div>
+                </div>
+                <div class="item">
+                  <div class="item-top">
+                    <div class="item-title">PWM 30% 运行 10 秒</div>
+                    <div class="badges"><span class="badge warn">PWM</span></div>
+                  </div>
+                  <div class="mini">目标设备：PWM 通道 1</div>
+                </div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="head">
+                <div>
+                  <h2>编辑动作模板</h2>
+                  <p>动作模板不负责“什么时候触发”，只负责“一次怎么执行”。</p>
+                </div>
+                <div class="badges">
+                  <span class="badge ok">被 3 条计划调用</span>
+                </div>
+              </div>
+
+              <div class="form">
+                <div class="section">
+                  <div class="section-head">
+                    <strong>基础信息</strong>
+                    <div class="help">?</div>
+                  </div>
+                  <div class="grid-2">
+                    <div class="field">
+                      <label>模板名称</label>
+                      <div class="input">加药泵 A 运行 3 秒</div>
+                    </div>
+                    <div class="field">
+                      <label>目标设备</label>
+                      <div class="select">加药泵 A</div>
+                    </div>
+                    <div class="field">
+                      <label>动作模式</label>
+                      <div class="select">通断脉冲</div>
+                    </div>
+                    <div class="field">
+                      <label>持续多久（秒）</label>
+                      <div class="input">3</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-head">
+                    <strong>执行策略</strong>
+                    <div class="help">?</div>
+                  </div>
+                  <div class="chips">
+                    <div class="chip active">点动一次</div>
+                    <div class="chip">循环运行</div>
+                    <div class="chip">切到常开</div>
+                    <div class="chip">切到常闭</div>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-head">
+                    <strong>备注</strong>
+                    <div class="help">?</div>
+                  </div>
+                  <div class="textarea">用于小剂量加药修正，也可用于手动点动校准。</div>
+                </div>
+
+                <div class="btn-row">
+                  <button class="btn primary">保存模板</button>
+                  <button class="btn blue">执行一次</button>
+                  <button class="btn ghost">删除模板</button>
+                </div>
+              </div>
+            </section>
+
+            <aside class="side-stack">
+              <div class="card">
+                <h3>执行预览</h3>
+                <div class="summary-box">
+                  <div class="summary-row">
+                    <span>一句话摘要</span>
+                    <strong>给加药泵 A 通电 3 秒，然后自动恢复关闭。</strong>
+                  </div>
+                  <div class="summary-row">
+                    <span>手动测试</span>
+                    <strong>允许人工执行；若总控未解锁，则仅模拟。</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <h3>调用关系</h3>
+                <div class="status-log">
+                  <div class="entry">
+                    <strong>工作时段加药 A</strong>
+                    <span>条件成立后调用这条模板。</span>
+                  </div>
+                  <div class="entry">
+                    <strong>每小时例行修正</strong>
+                    <span>时间触发，每小时最多一次。</span>
+                  </div>
+                  <div class="entry">
+                    <strong>人工校准</strong>
+                    <span>维护人员手动调用。</span>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+        <div class="statusbar">2026-06-17 设计预演 B</div>
+      </div>
+    </section>
+
+    <div class="screen-label">Screen C · 横屏 1280x800 · 任务计划工作台</div>
+    <section class="shell landscape">
+      <div class="frame">
+        <div class="top-tabs">
+          <div class="tab">数据仪表</div>
+          <div class="tab">硬件配置</div>
+          <div class="tab">动作配置</div>
+          <div class="tab active">任务计划</div>
+          <div class="tab">系统设置</div>
+          <div class="right">
+            <div class="dot-btn">译</div>
+            <div class="dot-btn">调</div>
+            <div class="dot-btn">LOGO</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="page">
+          <div class="head">
+            <div>
+              <h2>任务计划</h2>
+              <p>一条计划只决定三件事：执行什么、什么时候执行、哪些限制必须生效。</p>
+            </div>
+            <div class="btn-row">
+              <button class="btn">刷新</button>
+              <button class="btn primary">去动作配置</button>
+            </div>
+          </div>
+
+          <div class="stats">
+            <div class="stat"><span>时间计划</span><strong>1 / 1</strong></div>
+            <div class="stat"><span>条件计划</span><strong>1 / 1</strong></div>
+            <div class="stat"><span>输出设备</span><strong>4 / 4</strong></div>
+            <div class="stat"><span>自动执行</span><strong>手动管理</strong></div>
+            <div class="stat"><span>设备控制</span><strong>仅模拟</strong></div>
+            <div class="stat"><span>后台服务</span><strong>运行中</strong></div>
+          </div>
+
+          <div class="section">
+            <div class="section-head">
+              <strong>运行控制</strong>
+              <div class="mini">手动管理 | 仅模拟 | 运行中 | 最近检查 2026-06-17 04:57:23</div>
+            </div>
+            <div class="grid-2" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+              <div class="check"><span>自动执行计划</span><div class="switch"></div></div>
+              <div class="check"><span>仅模拟</span><div class="switch on"></div></div>
+              <div class="check"><span>允许控制设备</span><div class="switch"></div></div>
+            </div>
+          </div>
+
+          <div class="workspace-3">
+            <section class="card">
+              <div class="head">
+                <div>
+                  <h3>计划列表</h3>
+                  <p>时间和条件共用一个列表，避免用户先想“自己属于哪一类”。</p>
+                </div>
+              </div>
+              <div class="btn-row">
+                <button class="btn primary">新建时间</button>
+                <button class="btn primary">新建条件</button>
+              </div>
+              <div class="list">
+                <div class="item active">
+                  <div class="item-top">
+                    <div class="item-title">每日中午排水</div>
+                    <div class="badges">
+                      <span class="badge">时间</span>
+                      <span class="badge ok">停用</span>
+                    </div>
+                  </div>
+                  <div class="mini">每天 12:00 -> 排水 20 秒</div>
+                </div>
+                <div class="item">
+                  <div class="item-top">
+                    <div class="item-title">pH 偏高时加药 A</div>
+                    <div class="badges">
+                      <span class="badge">条件</span>
+                      <span class="badge ok">停用</span>
+                    </div>
+                  </div>
+                  <div class="mini">pH 大于 6.8，持续 30 秒 -> 加药泵 A 运行 3 秒</div>
+                </div>
+                <div class="item">
+                  <div class="item-top">
+                    <div class="item-title">夜间停机保护</div>
+                    <div class="badges">
+                      <span class="badge">时间</span>
+                      <span class="badge warn">待复核</span>
+                    </div>
+                  </div>
+                  <div class="mini">21:00-06:00 -> 禁止非必要动作</div>
+                </div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="head">
+                <div>
+                  <div class="mini">时间计划</div>
+                  <h2>每日中午排水</h2>
+                </div>
+                <div class="badges">
+                  <span class="badge">时间</span>
+                  <span class="badge ok">停用</span>
+                </div>
+              </div>
+
+              <div class="form">
+                <div class="section">
+                  <div class="section-head">
+                    <strong>1. 执行什么</strong>
+                    <div class="help">?</div>
+                  </div>
+                  <div class="grid-2">
+                    <div class="field wide">
+                      <label>动作模板</label>
+                      <div class="select">打开排水阀 20 秒</div>
+                    </div>
+                    <div class="field">
+                      <label>测试方式</label>
+                      <div class="chips">
+                        <div class="chip active">仅模拟</div>
+                        <div class="chip">允许真实输出</div>
+                      </div>
+                    </div>
+                    <div class="field">
+                      <label>执行预览</label>
+                      <div class="input">排水阀打开 20 秒，然后关闭</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-head">
+                    <strong>2. 什么时候执行</strong>
+                    <div class="help">?</div>
+                  </div>
+                  <div class="grid-2">
+                    <div class="field">
+                      <label>触发方式</label>
+                      <div class="select">每天固定时间</div>
+                    </div>
+                    <div class="field">
+                      <label>每天几点</label>
+                      <div class="input">12:00</div>
+                    </div>
+                    <div class="field wide">
+                      <label>生效时段</label>
+                      <div class="chips">
+                        <div class="chip active">周一</div><div class="chip active">周二</div><div class="chip active">周三</div><div class="chip active">周四</div><div class="chip active">周五</div><div class="chip active">周六</div><div class="chip active">周日</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-head">
+                    <strong>3. 频率限制</strong>
+                    <div class="help">?</div>
+                  </div>
+                  <div class="grid-2">
+                    <div class="field">
+                      <label>两次执行至少间隔（秒）</label>
+                      <div class="input">30</div>
+                    </div>
+                    <div class="field">
+                      <label>计划状态</label>
+                      <div class="chips"><div class="chip active">启用</div></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="btn-row">
+                  <button class="btn primary">保存计划</button>
+                  <button class="btn">执行一次</button>
+                  <button class="btn ghost">删除</button>
+                </div>
+              </div>
+            </section>
+
+            <aside class="side-stack">
+              <div class="card">
+                <h3>右侧摘要</h3>
+                <div class="summary-box">
+                  <div class="summary-row">
+                    <span>当前会执行</span>
+                    <strong>打开排水阀 20 秒</strong>
+                  </div>
+                  <div class="summary-row">
+                    <span>触发摘要</span>
+                    <strong>每天 12:00，全天有效</strong>
+                  </div>
+                  <div class="summary-row">
+                    <span>安全限制</span>
+                    <strong>最短间隔 30 秒；真实输出仍锁定</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <h3>最近结果</h3>
+                <div class="status-log">
+                  <div class="entry">
+                    <strong>2026-06-16 12:00 · 成功</strong>
+                    <span>来源：每日时间触发 · 结果：执行完成</span>
+                  </div>
+                  <div class="entry">
+                    <strong>2026-06-15 12:00 · 仅模拟</strong>
+                    <span>原因：设备控制仍锁定，因此未真正驱动继电器。</span>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+        <div class="statusbar">2026-06-17 设计预演 C</div>
+      </div>
+    </section>
+
+    <div class="screen-label">Screen D · 竖屏 800x1200 · 任务计划 / 单计划编辑</div>
+    <section class="shell portrait">
+      <div class="frame">
+        <div class="top-tabs">
+          <div class="tab active">任务计划</div>
+          <div class="tab">动作配置</div>
+          <div class="right">
+            <div class="dot-btn">译</div>
+            <div class="dot-btn">LOGO</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="portrait-page">
+          <div class="portrait-card">
+            <div class="head">
+              <div>
+                <h2>新建条件计划</h2>
+                <p>竖屏不直接堆成长表单，而是按步骤卡片编辑。</p>
+              </div>
+              <div class="badges">
+                <span class="badge">条件</span>
+                <span class="badge warn">仅模拟</span>
+              </div>
+            </div>
+            <div class="steps">
+              <div class="step active"><span>步骤 1</span><strong>触发条件</strong></div>
+              <div class="step"><span>步骤 2</span><strong>执行动作</strong></div>
+              <div class="step"><span>步骤 3</span><strong>限制与保存</strong></div>
+            </div>
+          </div>
+
+          <div class="portrait-card">
+            <div class="section-head">
+              <strong>基本信息</strong>
+              <div class="help">?</div>
+            </div>
+            <div class="grid-2">
+              <div class="field wide">
+                <label>计划名称</label>
+                <div class="input">新的水质条件计划</div>
+              </div>
+              <div class="field">
+                <label>监测哪一项</label>
+                <div class="select">pH</div>
+              </div>
+              <div class="field">
+                <label>比较方式</label>
+                <div class="select">大于</div>
+              </div>
+              <div class="field">
+                <label>设定值</label>
+                <div class="input">6.8</div>
+              </div>
+              <div class="field">
+                <label>连续满足多久（秒）</label>
+                <div class="input">30</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="portrait-card">
+            <div class="section-head">
+              <strong>执行动作</strong>
+              <div class="help">?</div>
+            </div>
+            <div class="grid-2">
+              <div class="field wide">
+                <label>动作模板</label>
+                <div class="select">加药泵 A 运行 3 秒</div>
+              </div>
+              <div class="field wide">
+                <label>执行预览</label>
+                <div class="textarea">当 pH 大于 6.8 并持续 30 秒时，执行加药泵 A 运行 3 秒。</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="portrait-card">
+            <div class="section-head">
+              <strong>限制与状态</strong>
+              <div class="help">?</div>
+            </div>
+            <div class="checks">
+              <div class="check"><span>两次执行至少间隔 600 秒</span><div class="switch on"></div></div>
+              <div class="check"><span>当前仅模拟，不控制设备</span><div class="switch on"></div></div>
+              <div class="check"><span>计划启用后立即生效</span><div class="switch"></div></div>
+            </div>
+          </div>
+
+          <div class="portrait-card">
+            <div class="btn-row">
+              <button class="btn primary">保存计划</button>
+              <button class="btn">检查</button>
+              <button class="btn">试跑</button>
+              <button class="btn ghost">取消新建</button>
+            </div>
+            <div class="summary-box">
+              <div class="summary-row">
+                <span>最近结果</span>
+                <strong>当前只是草稿，保存后才会进入自动判断。</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="statusbar">2026-06-17 设计预演 D</div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

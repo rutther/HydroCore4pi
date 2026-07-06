@@ -1,0 +1,132 @@
+/* 文件：ui/styles/layout.css
+ * 职责：页面骨架/分层布局（stage/shell/top-tabs/page-area/sub-tabs/content/statusbar）
+ */
+
+.stage{
+  width:clamp(var(--minStage), 100vw, var(--maxStage));
+  margin:0 auto;
+  padding:12px;
+}
+
+/* 第一层：外框（全局） */
+.shell{
+  border:var(--border);
+  border-radius:var(--radius);
+  padding:10px;
+
+  height:var(--shellH);
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+
+  position:relative;
+  background:transparent;
+  overflow:hidden;
+}
+
+/* 竖屏模式：宽度 < 800px -> 高度 1200px */
+@media (max-width: 800px){
+  .shell{ height:var(--shellHPortrait); }
+}
+
+@media (min-width: 801px) and (max-height: 824px){
+  .shell{
+    height:calc(100vh - 24px);
+  }
+}
+
+/* 顶部主导航：你要求 top padding=4px；content顶部padding=2px */
+.top-tabs{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+  padding:4px 8px 0 8px;
+  flex:0 0 auto;
+}
+
+.top-left{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  align-items:center;
+  min-width:0;
+}
+
+.top-right{
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex:0 0 auto;
+}
+
+.divider{
+  height:1px;
+  background:rgba(143,158,178,0.24);
+  border-radius:1px;
+  margin:0 8px;
+  flex:0 0 auto;
+}
+
+/* 页面层：预留 statusbar 空间 */
+.page-area{
+  flex:1;
+  min-height:0;
+  overflow:hidden;
+  padding-bottom:20px; /* 给底部statusbar留空间 */
+}
+
+.page{
+  height:100%;
+  display:none;
+  flex-direction:column;
+  min-height:0;
+}
+.page.active{ display:flex; }
+
+/* sub-tabs：仅硬件配置页存在；你要求 sub-tabs 下方 padding=6px */
+.sub-tabs{
+  display:flex;
+  gap:22px;            /* 你要求药丸之间距离增加 */
+  flex-wrap:wrap;
+  padding:0 8px 6px 8px;
+  margin:0;
+  flex:0 0 auto;
+}
+
+/* content：你要求顶部padding=2px */
+.content{
+  flex:1;
+  overflow:auto;
+  padding:2px 8px 8px 8px;
+  min-height:0;
+}
+
+/* 子页显示/隐藏 */
+.subpage{
+  display:none;
+  height:100%;
+  min-height:0;
+}
+.subpage.active{ display:block; }
+
+/* 全局时间条：置底居中，字号18，高度22 */
+.statusbar{
+  position:absolute;
+  left:12px;
+  right:12px;
+  bottom:8px;
+  height:22px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font-size:18px;
+  letter-spacing:0.5px;
+  font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  color:rgba(142,161,184,0.76);
+  text-shadow:none;
+  pointer-events:none;
+}

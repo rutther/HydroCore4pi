@@ -1,0 +1,14 @@
+{
+  "id": "pwm_60pct_10s",
+  "name": "PWM 通道 1 60% 运行 10 秒",
+  "enabled": true,
+  "output_id": "aux_pwm_1",
+  "output_name": "PWM 通道 1",
+  "mode": "pwm_run",
+  "params": {
+    "duty_percent": 60,
+    "duration_ms": 10000
+  },
+  "summary": "PWM 通道 1 60% 运行 10 秒",
+  "description": "PWM 输出 60%，持续 10 秒。"
+}

@@ -1,0 +1,137 @@
+{
+  "__meta__": {
+    "align_persist_to_wall": true,
+    "default_persist_sec": 10,
+    "default_round_to": 3,
+    "default_sampling_sec": 3,
+    "max_db_mb": 10240,
+    "retention_days": 400
+  },
+  "plans": [
+    {
+      "address": 10,
+      "parameters": [
+        {
+          "delta_mode": "absolute_percent",
+          "label": "电导率",
+          "name": "ec_value",
+          "trend_enabled": true,
+          "unit": "mS/cm",
+          "value_kind": "continuous"
+        },
+        {
+          "delta_mode": "absolute_percent",
+          "label": "电阻率",
+          "name": "resistivity_value",
+          "trend_enabled": true,
+          "value_kind": "continuous"
+        },
+        {
+          "delta_mode": "absolute_only",
+          "label": "温度",
+          "name": "temperature",
+          "trend_enabled": true,
+          "unit": "°C",
+          "value_kind": "continuous"
+        },
+        {
+          "delta_mode": "absolute_percent",
+          "label": "TDS",
+          "name": "tds_value",
+          "trend_enabled": true,
+          "unit": "mg/L",
+          "value_kind": "continuous"
+        },
+        {
+          "delta_mode": "absolute_percent",
+          "label": "盐度",
+          "name": "salinity",
+          "trend_enabled": true,
+          "value_kind": "continuous"
+        }
+      ],
+      "persist_sec": 10,
+      "port": "/dev/ttyACM0",
+      "protocol": "lanchang_ec",
+      "sampling_sec": 3
+    },
+    {
+      "address": 9,
+      "parameters": [
+        {
+          "delta_mode": "absolute_only",
+          "label": "pH",
+          "name": "measurement",
+          "trend_enabled": true,
+          "unit": "pH",
+          "value_kind": "continuous"
+        },
+        {
+          "delta_mode": "absolute_only",
+          "label": "温度",
+          "name": "temperature",
+          "trend_enabled": true,
+          "unit": "°C",
+          "value_kind": "continuous"
+        },
+        {
+          "delta_mode": "absolute_only",
+          "label": "电流输出",
+          "name": "current_output",
+          "trend_enabled": true,
+          "unit": "mA",
+          "value_kind": "continuous"
+        },
+        {
+          "agg_mode": "last",
+          "delta_mode": "none",
+          "event_only": "nonzero_or_change",
+          "label": "报警",
+          "name": "warning",
+          "round_to": 0,
+          "trend_enabled": false,
+          "unit": "",
+          "value_kind": "event"
+        }
+      ],
+      "persist_sec": 10,
+      "port": "/dev/ttyACM0",
+      "protocol": "lanchang_ph",
+      "sampling_sec": 3
+    },
+    {
+      "address": 8,
+      "parameters": [
+        {
+          "__test_value": "0.086067795753479",
+          "delta_mode": "absolute_only",
+          "label": "腐蚀率",
+          "name": "corrosion_rate",
+          "trend_enabled": true,
+          "unit": "mm/a",
+          "value_kind": "continuous"
+        },
+        {
+          "__test_value": "-14.41294002532959",
+          "delta_mode": "absolute_only",
+          "label": "电位",
+          "name": "mv_value",
+          "trend_enabled": true,
+          "unit": "mV",
+          "value_kind": "continuous"
+        },
+        {
+          "__test_value": "0",
+          "delta_mode": "none",
+          "label": "偏移量",
+          "name": "offset",
+          "trend_enabled": false,
+          "unit": "",
+          "value_kind": "state"
+        }
+      ],
+      "port": "/dev/ttyACM0",
+      "protocol": "lanchang_cr_huchen"
+    }
+  ]
+}

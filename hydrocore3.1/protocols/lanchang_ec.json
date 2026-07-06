@@ -1,0 +1,97 @@
+{
+  "__meta__": { "_float_order": "CDAB" },
+
+  "ec_value": {
+    "addr": 0, "type": "float", "length": 2, "access": "read_only",
+    "description": "电导率测量值", "label_zh": "电导率", "unit": "mS/cm"
+  },
+  "resistivity_value": {
+    "addr": 2, "type": "float", "length": 2, "access": "read_only",
+    "description": "电阻率值", "label_zh": "电阻率", "unit": "Ω·cm"
+  },
+  "temperature": {
+    "addr": 4, "type": "float", "length": 2, "access": "read_only",
+    "description": "温度值（自动补偿）", "label_zh": "温度", "unit": "°C"
+  },
+  "tds_value": {
+    "addr": 6, "type": "float", "length": 2, "access": "read_only",
+    "description": "TDS 总溶解固体", "label_zh": "TDS", "unit": "mg/L"
+  },
+  "salinity": {
+    "addr": 8, "type": "float", "length": 2, "access": "read_only",
+    "description": "盐度", "label_zh": "盐度", "unit": "mg/L"
+  },
+
+  "electrode_constant": {
+    "addr": 10, "type": "float", "length": 2, "access": "read_write",
+    "description": "电极常数", "label_zh": "电极常数", "unit": ""
+  },
+  "compensation_coefficient": {
+    "addr": 12, "type": "float", "length": 2, "access": "read_write",
+    "description": "温度补偿系数", "label_zh": "温补系数", "unit": ""
+  },
+  "manual_temperature": {
+    "addr": 14, "type": "float", "length": 2, "access": "read_write",
+    "description": "手动温度值", "label_zh": "手动温度", "unit": "°C"
+  },
+  "temperature_offset": {
+    "addr": 16, "type": "float", "length": 2, "access": "read_write",
+    "description": "温度偏移量", "label_zh": "温度偏移", "unit": "°C"
+  },
+
+  "baud_rate": {
+    "addr": 18, "type": "float", "length": 2, "access": "read_only",
+    "description": "波特率 (float)", "label_zh": "波特率(读)", "unit": "bps"
+  },
+  "slave_address": {
+    "addr": 20, "type": "float", "length": 2, "access": "read_only",
+    "description": "从机地址 (float 1.0-254.0)", "label_zh": "从机地址(读)", "unit": ""
+  },
+  "filter_time": {
+    "addr": 22, "type": "float", "length": 2, "access": "read_only",
+    "description": "滤波秒数 (float)", "label_zh": "滤波时长(读)", "unit": "s"
+  },
+
+  "compensation_mode": {
+    "addr": 26, "type": "float", "length": 2, "access": "read_only",
+    "description": "补偿模式 0=自动 1=手动 (float)", "label_zh": "补偿模式(读)", "unit": ""
+  },
+  "sensor_model": {
+    "addr": 28, "type": "float", "length": 2, "access": "read_only",
+    "description": "传感器型号 50.0=PT1000 50.1=NTC10K", "label_zh": "传感器型号", "unit": ""
+  },
+  "ma_high_point": {
+    "addr": 32, "type": "float", "length": 2, "access": "read_write",
+    "description": "4-20 mA 高点", "label_zh": "4-20 mA 高点", "unit": "mA"
+  },
+
+  "float_order": {
+    "addr": 50, "type": "int", "length": 1, "access": "write_only",
+    "description": "浮点字节序设置 0=ABCD 1=CDAB", "label_zh": "浮点字节序(写)", "unit": ""
+  },
+  "temp_compensation_type": {
+    "addr": 51, "type": "int", "length": 1, "access": "write_only",
+    "description": "温补类型 0=PT1000 1=NTC10K", "label_zh": "温补类型(写)", "unit": ""
+  },
+  "restore_defaults": {
+    "addr": 100, "type": "int", "length": 1, "access": "write_only",
+    "description": "恢复出厂 (写1)", "label_zh": "恢复出厂(写1)", "unit": ""
+  },
+
+  "write_baud_rate": {
+    "addr": 18, "type": "int", "length": 1, "access": "write_only",
+    "description": "修改波特率 (写整数码)", "label_zh": "修改波特率(写)", "unit": "code"
+  },
+  "write_slave_address": {
+    "addr": 20, "type": "int", "length": 1, "access": "write_only",
+    "description": "修改设备地址 (写1-254)", "label_zh": "修改地址(写)", "unit": ""
+  },
+  "write_filter_time": {
+    "addr": 22, "type": "int", "length": 1, "access": "write_only",
+    "description": "修改滤波秒数 (写秒)", "label_zh": "修改滤波(写)", "unit": "s"
+  },
+  "write_compensation_mode": {
+    "addr": 26, "type": "int", "length": 1, "access": "write_only",
+    "description": "修改补偿模式 (写0/1)", "label_zh": "修改补偿模式(写)", "unit": ""
+  }
+}
