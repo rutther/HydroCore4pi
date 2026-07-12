@@ -24,4 +24,8 @@ local_preview.out.log
 local_preview.err.log
 
 dist/
+*.deb
+packaging/offline_debs/
+packaging/vendor/
 ui/dev/artifacts/
+ui/dev/audits/

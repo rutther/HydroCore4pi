@@ -2,7 +2,12 @@
  * 职责：覆盖tokens（蓝色赛博）
  */
 :root{
-  --green:#4b8dff;
-  --green2:#1f5fbf;
-  --olive:#2f73d9;
+  --accent:#4b8dff;
+  --accent-strong:#7db0ff;
+  --accent-fill:#1f5fbf;
+  --accent-soft:rgba(75,141,255,0.11);
+  --accent-line-soft:rgba(75,141,255,0.18);
+  --accent-line:rgba(75,141,255,0.36);
+  --accent-line-strong:rgba(75,141,255,0.76);
+  --accent-focus:rgba(75,141,255,0.98);
 }

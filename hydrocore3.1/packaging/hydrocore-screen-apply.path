@@ -1,0 +1,10 @@
+[Unit]
+Description=Watch HydroCore boot screen direction setting
+
+[Path]
+PathChanged=/var/lib/hydrocore/runtime/screen_apply.request
+PathModified=/var/lib/hydrocore/runtime/screen_apply.request
+Unit=hydrocore-screen-apply.service
+
+[Install]
+WantedBy=multi-user.target

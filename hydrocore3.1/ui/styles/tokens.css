@@ -6,15 +6,31 @@
   --bg:#000;
   --fg:#fff;
 
-  --green:#00FF00;
-  --green2:#008A00;   /* 一级选中填充 + pill默认填充 */
-  --olive:#60A917;    /* 二级选中填充 */
+  /* 语义色：主题只覆盖这些变量，页面不要再直接写“绿/蓝”。 */
+  --accent:#00FF00;
+  --accent-strong:#00FF00;
+  --accent-fill:#008A00;
+  --accent-soft:rgba(0,255,0,0.08);
+  --accent-line-soft:rgba(0,255,0,0.16);
+  --accent-line:rgba(0,255,0,0.35);
+  --accent-line-strong:rgba(0,255,0,0.75);
+  --accent-focus:rgba(0,255,0,0.95);
+
+  --state-ok:#24d18f;
+  --state-warn:#f0b429;
+  --state-danger:#ff5a72;
+  --state-info:#4b8dff;
+
+  /* 旧变量保留为兼容层，后续页面逐步迁移到语义变量。 */
+  --green:var(--accent);
+  --green2:var(--accent-fill);
+  --olive:var(--accent-strong);
 
   --radius:12px;      /* 卡片/外框统一圆角 */
   --btnRadius:10px;   /* 一级按钮：非胶囊 */
   --pillRadius:999px; /* 二级按钮：胶囊 */
 
-  --border:1px solid var(--green);
+  --border:1px solid var(--accent);
 
   /* 尺寸策略：你要求最低宽度 580px */
   --minStage:580px;
@@ -26,7 +42,12 @@
 }
 
 *{ box-sizing:border-box; }
-html,body{ height:100%; margin:0; }
+html,body{
+  height:100%;
+  margin:0;
+  overscroll-behavior:none;
+  touch-action:pan-x pan-y;
+}
 
 body{
   background:var(--bg);

@@ -24,33 +24,41 @@
   overflow:hidden;
 }
 
-/* 竖屏模式：宽度 < 800px -> 高度 1200px */
-@media (max-width: 800px){
-  .shell{ height:var(--shellHPortrait); }
+/* 手机浏览模式：宽度小于 880px 才切换为窄屏浏览布局。 */
+@media (max-width: 879px){
+  .stage{
+    width:100vw;
+    min-width:0;
+    max-width:none;
+    margin:0;
+    padding:6px;
+  }
+
+  .shell{
+    width:100%;
+    min-width:0;
+    height:calc(100dvh - 12px);
+    min-height:620px;
+    padding:8px;
+    gap:6px;
+    overflow:hidden;
+  }
 }
 
-@media (min-width: 801px) and (max-height: 824px){
+@media (min-width: 880px) and (max-height: 824px){
   .shell{
     height:calc(100vh - 24px);
   }
 }
 
-/* 顶部主导航：你要求 top padding=4px；content顶部padding=2px */
-.top-tabs{
+/* 顶部设备标识与全局工具 */
+.top-meta{
   display:flex;
   align-items:center;
-  gap:6px;
-  flex-wrap:wrap;
-  padding:4px 8px 0 8px;
+  justify-content:space-between;
+  gap:10px;
+  padding:2px 8px 0 8px;
   flex:0 0 auto;
-}
-
-.top-left{
-  display:flex;
-  gap:6px;
-  flex-wrap:wrap;
-  align-items:center;
-  min-width:0;
 }
 
 .top-right{
@@ -59,6 +67,33 @@
   align-items:center;
   gap:8px;
   flex:0 0 auto;
+}
+
+/* 顶部主导航：独立成行，不再和语言/颜色/Logo 抢空间 */
+.top-tabs{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:nowrap;
+  padding:0 8px 0 8px;
+  flex:0 0 auto;
+  min-width:0;
+}
+
+.top-left{
+  display:flex;
+  gap:6px;
+  flex-wrap:nowrap;
+  align-items:center;
+  min-width:0;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+
+.top-left::-webkit-scrollbar{
+  display:none;
 }
 
 .divider{
@@ -129,4 +164,85 @@
   color:rgba(142,161,184,0.76);
   text-shadow:none;
   pointer-events:none;
+}
+
+@media (max-width: 879px){
+  html,
+  body{
+    overflow-x:hidden;
+  }
+
+  .top-meta{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:6px;
+    overflow:hidden;
+    padding:0;
+  }
+
+  .top-tabs{
+    display:flex;
+    align-items:center;
+    overflow:hidden;
+    padding:0;
+  }
+
+  .top-left{
+    display:flex;
+    flex-wrap:nowrap;
+    gap:4px;
+    align-items:center;
+    min-width:0;
+    overflow-x:auto;
+    overflow-y:hidden;
+    overscroll-behavior-x:contain;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .top-left::-webkit-scrollbar{
+    display:none;
+  }
+
+  .top-right{
+    width:auto;
+    min-width:0;
+    margin-left:0;
+    justify-content:flex-end;
+    gap:4px;
+    overflow:hidden;
+  }
+
+  .divider{
+    margin:0 2px;
+  }
+
+  .page-area{
+    padding-bottom:22px;
+  }
+
+  .content{
+    padding:2px 2px 8px;
+  }
+
+  .sub-tabs{
+    flex-wrap:wrap;
+    overflow:visible;
+    gap:8px;
+    padding:0 2px 6px;
+    scrollbar-width:none;
+  }
+
+  .sub-tabs::-webkit-scrollbar{
+    display:none;
+  }
+
+  .statusbar{
+    left:8px;
+    right:8px;
+    bottom:6px;
+    font-size:14px;
+    height:18px;
+  }
 }

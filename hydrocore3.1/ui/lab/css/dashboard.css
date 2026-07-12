@@ -25,6 +25,8 @@ html, body{
   background:var(--bg);
   color:var(--fg);
   font-family: system-ui, -apple-system, Segoe UI, Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  overscroll-behavior:none;
+  touch-action:pan-x pan-y;
 }
 
 *{
@@ -120,14 +122,443 @@ html, body{
   box-sizing:border-box;
 }
 
-@media (max-width: 760px){
+@media (max-width: 879px){
   .body{
-    grid-template-columns:1fr;
-    grid-template-rows: 320px 1fr;
+    grid-template-columns:minmax(0, 1fr);
+    grid-template-rows:156px minmax(0, 1fr);
+    gap:6px;
+    padding:0;
+    overflow:hidden;
+    min-width:0;
+  }
+
+  .body > *,
+  .left,
+  .main,
+  .controls,
+  .chart-wrap{
+    box-sizing:border-box;
+    min-width:0;
+    width:100%;
+    max-width:100%;
+  }
+
+  .left{
+    padding:8px;
+    border-radius:9px;
+  }
+
+  .left-head{
+    gap:8px;
+    align-items:center;
+  }
+
+  .left-title{
+    font-size:12px;
+  }
+
+  .search{
+    gap:6px;
+    margin-top:6px;
+  }
+
+  .search .input{
+    min-width:0;
+    flex:1 1 auto;
+    height:28px;
+  }
+
+  .search .btn{
+    height:28px;
+    padding:0 10px;
+  }
+
+  .series-list{
+    margin-top:6px;
+    gap:6px;
+    flex:0 0 74px;
+    min-height:74px;
+    height:74px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    flex-direction:row;
+    padding:0 2px 2px 0;
+    scrollbar-width:none;
+  }
+
+  .series-list::-webkit-scrollbar{
+    display:none;
+  }
+
+  .item{
+    flex:0 0 184px;
+    height:72px;
+    padding:8px 9px;
+    border-radius:8px;
+  }
+
+  .item.active::before{
+    top:8px;
+    bottom:8px;
+  }
+
+  .name{
+    max-width:none;
+  }
+
+  .item-top{
+    gap:6px;
+  }
+
+  .item-left{
+    gap:7px;
+  }
+
+  .dot{
+    width:9px;
+    height:9px;
+  }
+
+  .name,
+  .unit{
+    font-size:11px;
+  }
+
+  .unit{
+    margin-left:4px;
+  }
+
+  .item-mid{
+    margin-top:5px;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .val{
+    font-size:17px;
+  }
+
+  .delta{
+    font-size:11px;
+  }
+
+  .item-sub{
+    display:none;
+  }
+
+  .main{
+    gap:6px;
+    overflow:hidden;
+  }
+
+  .controls{
+    padding:7px;
+    border-radius:9px;
+  }
+
+  .controls-row{
+    gap:6px;
+  }
+
+  .mode-row{
+    display:grid;
+    grid-template-columns:auto minmax(0, 1fr);
+    align-items:center;
+  }
+
+  .mode-pill{
+    height:32px;
+    min-height:32px;
+    flex:0 1 auto;
+    flex-wrap:nowrap;
+    align-items:center;
+    overflow:hidden;
+  }
+
+  #pillRecent.active{
+    grid-column:1 / -1;
+  }
+
+  #pillReplay.active{
+    grid-column:1 / -1;
+  }
+
+  .mode-pill:not(.active){
+    justify-self:start;
+    width:auto;
+    max-width:100%;
+  }
+
+  .pillcontent{
+    height:26px;
+    flex:1 1 auto;
+    min-width:0;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scrollbar-width:none;
+  }
+
+  .pillcontent::-webkit-scrollbar{
+    display:none;
+  }
+
+  #pillReplay.active{
+    grid-column:1 / -1;
+    width:100%;
+    height:auto;
+    min-height:0;
+    align-items:flex-start;
+    padding:4px;
+  }
+
+  #pillReplay.active .pillhead{
+    align-self:flex-start;
+  }
+
+  #pillReplay.active .pillcontent{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr);
+    height:auto;
+    gap:6px;
+    overflow:visible;
+  }
+
+  #pillReplay.active .range-item{
+    display:grid;
+    grid-template-columns:32px minmax(0, 1fr);
+    align-items:center;
+    gap:4px;
+    min-width:0;
+  }
+
+  #pillReplay.active .range-item .input{
+    width:100%;
+    min-width:0;
+  }
+
+  #pillReplay.active #btnApplyReplay{
+    width:100%;
+  }
+
+  .pillhead{
+    height:26px;
+    min-width:46px;
+    padding:0 8px;
+    font-size:11px;
+  }
+
+  .pillhead::after{
+    height:16px;
+    margin-left:7px;
+  }
+
+  .pillbtn{
+    min-width:36px;
+    height:26px;
+    padding:0 7px;
+    font-size:11px;
+  }
+
+  .tune-row,
+  .action-row{
+    margin-top:6px;
+  }
+
+  .action-row{
+    padding-top:6px;
+  }
+
+  .tag{
+    height:26px;
+    padding:0 8px;
+    font-size:11px;
+  }
+
+  .input{
+    height:28px;
+    font-size:12px;
+  }
+
+  .btn{
+    height:30px;
+    padding:0 10px;
+  }
+
+  .action-row #chartStatus,
+  .freshness{
+    flex:1 1 100%;
+    max-width:100%;
+    white-space:normal;
+  }
+
+  .replay-hint{
+    display:none;
+  }
+
+  #pillReplay.active .replay-hint{
+    display:block;
+    min-width:0;
+    white-space:normal;
+    line-height:1.35;
+  }
+
+  .chart-wrap{
+    min-height:0;
+    flex:1 1 auto;
+    border-radius:9px;
   }
 }
 
-@media (min-width: 761px) and (max-width: 1100px){
+@media (max-width: 879px){
+  html[data-shell-mode="panel"] .body{
+    grid-template-columns:260px minmax(0, 1fr);
+    grid-template-rows:minmax(0, 1fr);
+    gap:8px;
+    padding:0 8px 2px;
+  }
+
+  html[data-shell-mode="panel"] .left{
+    width:auto;
+    max-width:none;
+    padding:8px;
+    overflow:hidden;
+  }
+
+  html[data-shell-mode="panel"] .left-title{
+    font-size:12px;
+    line-height:1.2;
+  }
+
+  html[data-shell-mode="panel"] .search{
+    gap:6px;
+    margin-top:6px;
+  }
+
+  html[data-shell-mode="panel"] .search .input,
+  html[data-shell-mode="panel"] .search .btn{
+    height:28px;
+  }
+
+  html[data-shell-mode="panel"] .series-list{
+    flex:1 1 auto;
+    min-height:0;
+    height:auto;
+    margin-top:8px;
+    flex-direction:column;
+    overflow:auto;
+    gap:8px;
+    padding-right:4px;
+    scroll-snap-type:none;
+    scrollbar-width:auto;
+  }
+
+  html[data-shell-mode="panel"] .series-list::-webkit-scrollbar{
+    display:block;
+  }
+
+  html[data-shell-mode="panel"] .item{
+    flex:0 0 auto;
+    height:auto;
+    padding:9px;
+    overflow:visible;
+  }
+
+  html[data-shell-mode="panel"] .item-top{
+    min-height:auto;
+  }
+
+  html[data-shell-mode="panel"] .name{
+    max-width:135px;
+    font-size:11px;
+  }
+
+  html[data-shell-mode="panel"] .unit{
+    font-size:10px;
+  }
+
+  html[data-shell-mode="panel"] .item-mid{
+    display:flex;
+    align-items:baseline;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:6px;
+  }
+
+  html[data-shell-mode="panel"] .val{
+    font-size:17px;
+    line-height:1.1;
+  }
+
+  html[data-shell-mode="panel"] .delta{
+    font-size:11px;
+    line-height:1.1;
+    overflow:visible;
+    text-overflow:clip;
+  }
+
+  html[data-shell-mode="panel"] .item-sub{
+    display:block;
+    margin-top:6px;
+  }
+
+  html[data-shell-mode="panel"] .main{
+    gap:8px;
+    overflow:hidden;
+  }
+
+  html[data-shell-mode="panel"] .controls{
+    padding:8px;
+  }
+
+  html[data-shell-mode="panel"] .controls-row{
+    gap:8px;
+  }
+
+  html[data-shell-mode="panel"] .mode-row,
+  html[data-shell-mode="panel"] .mode-row.mode-replay{
+    display:flex;
+    grid-template-columns:none;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px;
+  }
+
+  html[data-shell-mode="panel"] .mode-pill{
+    width:auto;
+    max-width:100%;
+    height:34px;
+    min-height:34px;
+    padding:3px;
+    overflow:visible;
+  }
+
+  html[data-shell-mode="panel"] .pillcontent{
+    height:28px;
+    overflow:visible;
+  }
+
+  html[data-shell-mode="panel"] .pillhead,
+  html[data-shell-mode="panel"] .pillbtn{
+    height:28px;
+    font-size:12px;
+  }
+
+  html[data-shell-mode="panel"] .tune-row{
+    margin-top:8px;
+    overflow:visible;
+    flex-wrap:wrap;
+  }
+
+  html[data-shell-mode="panel"] .dashboard-status-row{
+    margin-top:8px;
+  }
+}
+
+
+
+
+@media (min-width: 880px) and (max-width: 1100px){
   .stage{ padding:8px; }
   .body{ grid-template-columns:260px minmax(0, 1fr); gap:8px; padding:0 8px 2px 8px; }
   .left{ padding:8px; }
@@ -169,6 +600,11 @@ html, body{
 .btn:hover{
   border-color:rgba(126,166,255,0.55);
   background:rgba(75,141,255,0.10);
+}
+.btn.active{
+  border-color:rgba(75,141,255,0.72);
+  background:rgba(75,141,255,0.18);
+  box-shadow:0 0 0 1px rgba(75,141,255,0.12) inset;
 }
 .btn-primary{
   border-color:rgba(75,141,255,0.72);
@@ -522,5 +958,1770 @@ html, body{
   border-radius:10px;
   background:var(--panel);
   overflow:hidden;
+  position:relative;
+  touch-action:none;
+  overscroll-behavior:none;
 }
-.chart{ width:100%; height:100%; }
+.chart-wrap.selecting{
+  border-color:rgba(75,141,255,0.70);
+}
+.chart-select-overlay{
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:0;
+  width:0;
+  display:none;
+  pointer-events:none;
+  background:rgba(75,141,255,0.16);
+  border-left:1px solid rgba(125,185,255,0.82);
+  border-right:1px solid rgba(125,185,255,0.82);
+  box-shadow:0 0 0 1px rgba(75,141,255,0.20) inset;
+  z-index:3;
+}
+.chart-wrap.selecting .chart-select-overlay{
+  display:block;
+}
+.chart{
+  width:100%;
+  height:100%;
+  touch-action:none;
+  overscroll-behavior:none;
+}
+
+.chart canvas{
+  touch-action:none;
+}
+
+/* 手机浏览模式最终覆盖必须放在文件末尾，避免被上方历史规则覆盖。 */
+@media (max-width: 879px){
+  .body{
+    grid-template-columns:minmax(0, 1fr);
+    grid-template-rows:134px minmax(0, 1fr);
+    gap:5px;
+    padding:0;
+    overflow:hidden;
+    min-width:0;
+  }
+
+  .left{
+    padding:6px;
+    border-radius:8px;
+    overflow:hidden;
+  }
+
+  .left-head{
+    min-height:16px;
+    align-items:center;
+    gap:6px;
+  }
+
+  .left-title{
+    font-size:12px;
+    line-height:16px;
+  }
+
+  .search{
+    gap:5px;
+    margin-top:4px;
+  }
+
+  .search .input{
+    min-width:0;
+    flex:1 1 auto;
+    height:26px;
+    padding:0 9px;
+    font-size:12px;
+  }
+
+  .search .btn{
+    height:26px;
+    min-width:48px;
+    padding:0 8px;
+  }
+
+  .series-list{
+    margin-top:5px;
+    flex:0 0 66px;
+    min-height:66px;
+    height:66px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    flex-direction:row;
+    gap:6px;
+    padding:0 1px 1px 0;
+    scroll-snap-type:x proximity;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .series-list::-webkit-scrollbar{
+    display:none;
+  }
+
+  .item{
+    flex:0 0 clamp(156px, 44vw, 184px);
+    height:64px;
+    min-width:0;
+    padding:6px 8px;
+    border-radius:8px;
+    box-sizing:border-box;
+    overflow:hidden;
+    scroll-snap-align:start;
+  }
+
+  .item.active::before{
+    top:6px;
+    bottom:6px;
+  }
+
+  .item-top{
+    gap:5px;
+    min-height:14px;
+    align-items:center;
+  }
+
+  .item-left{
+    gap:6px;
+    min-width:0;
+  }
+
+  .dot{
+    width:9px;
+    height:9px;
+  }
+
+  .name{
+    max-width:100%;
+    font-size:11px;
+  }
+
+  .unit{
+    flex:0 0 auto;
+    margin-left:3px;
+    font-size:10px;
+  }
+
+  .item-mid{
+    margin-top:3px;
+    display:grid;
+    grid-template-columns:minmax(0, 1fr);
+    gap:1px;
+    align-items:start;
+  }
+
+  .val{
+    font-size:16px;
+    line-height:1.05;
+    letter-spacing:0;
+  }
+
+  .delta{
+    font-size:10px;
+    line-height:1.05;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .item-sub{
+    display:none;
+  }
+
+  .main{
+    gap:5px;
+    overflow:hidden;
+  }
+
+  .controls{
+    padding:6px;
+    border-radius:8px;
+  }
+
+  .controls-row{
+    gap:5px;
+  }
+
+  .mode-row{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) auto;
+    align-items:start;
+    gap:5px;
+  }
+
+  .mode-row.mode-replay{
+    grid-template-columns:auto minmax(0, 1fr);
+  }
+
+  .mode-pill{
+    height:30px;
+    min-height:30px;
+    min-width:0;
+    flex:0 1 auto;
+    flex-wrap:nowrap;
+    align-items:center;
+    padding:2px;
+    border-radius:8px;
+    box-sizing:border-box;
+    overflow:hidden;
+  }
+
+  #pillRecent.active{
+    grid-column:auto;
+  }
+
+  #pillReplay.active{
+    grid-column:2;
+    width:auto;
+    max-width:100%;
+    height:auto;
+    min-height:64px;
+    align-items:stretch;
+  }
+
+  .pillcontent{
+    height:26px;
+    flex:1 1 auto;
+    min-width:0;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .pillcontent::-webkit-scrollbar{
+    display:none;
+  }
+
+  .pillhead{
+    height:26px;
+    min-width:44px;
+    padding:0 8px;
+    font-size:11px;
+  }
+
+  .pillhead::after{
+    height:16px;
+    margin-left:7px;
+  }
+
+  .pillbtn{
+    min-width:38px;
+    height:26px;
+    padding:0 8px;
+    font-size:11px;
+  }
+
+  #pillReplay.active .pillhead{
+    align-self:flex-start;
+  }
+
+  #pillReplay.active .pillcontent{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr);
+    grid-auto-rows:26px;
+    gap:4px;
+    height:auto;
+    overflow:visible;
+  }
+
+  #pillReplay.active .range-item{
+    display:grid;
+    grid-template-columns:26px minmax(0, 1fr);
+    gap:4px;
+    min-width:0;
+  }
+
+  #pillReplay.active .range-item .tag{
+    width:26px;
+    min-width:0;
+    padding:0;
+    justify-content:center;
+  }
+
+  #pillReplay.active .range-item .input{
+    width:100%;
+    min-width:0;
+    padding-left:8px;
+    padding-right:30px;
+    font-size:11px;
+  }
+
+  #pillReplay.active #btnApplyReplay{
+    grid-column:1;
+    justify-self:start;
+    width:82px;
+    height:26px;
+  }
+
+  #pillReplay.active .replay-hint{
+    display:none;
+  }
+
+  .tune-row{
+    margin-top:5px;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .tune-row::-webkit-scrollbar{
+    display:none;
+  }
+
+  .tune{
+    flex:0 0 auto;
+  }
+
+  .tag{
+    height:26px;
+    padding:0 8px;
+    font-size:11px;
+  }
+
+  .input{
+    height:28px;
+    font-size:12px;
+  }
+
+  .tune .input{
+    min-width:92px;
+    width:92px;
+  }
+
+  .action-row{
+    margin-top:5px;
+    padding-top:5px;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .action-row::-webkit-scrollbar{
+    display:none;
+  }
+
+  .btn{
+    height:28px;
+    padding:0 9px;
+    flex:0 0 auto;
+    font-size:11px;
+  }
+
+  .dashboard-status-row{
+    margin-top:4px;
+    min-height:16px;
+    align-items:center;
+    flex-wrap:nowrap;
+    overflow:hidden;
+  }
+
+  .dashboard-status-row .freshness{
+    flex:0 1 auto;
+    max-width:52%;
+    min-width:0;
+    margin-left:0;
+    white-space:nowrap;
+    font-size:11px;
+  }
+
+  .dashboard-status-row #chartStatus{
+    flex:1 1 auto;
+    min-width:0;
+    max-width:none;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:11px;
+  }
+
+  .replay-hint{
+    display:none;
+  }
+
+  .chart-wrap{
+    min-height:0;
+    flex:1 1 auto;
+    border-radius:8px;
+  }
+}
+
+/* 手机浏览模式最终收束：参数横滑短条，时间和动作控件压成低高度工具栏。 */
+@media (max-width: 879px){
+  html[data-shell-mode="phone"] .body{
+    grid-template-rows:108px minmax(0, 1fr);
+    gap:5px;
+    padding:0;
+  }
+
+  html[data-shell-mode="phone"] .left{
+    padding:5px;
+    border-radius:8px;
+  }
+
+  html[data-shell-mode="phone"] .left-head{
+    min-height:15px;
+    align-items:center;
+    gap:6px;
+  }
+
+  html[data-shell-mode="phone"] .left-title,
+  html[data-shell-mode="phone"] .mini{
+    font-size:11px;
+    line-height:15px;
+  }
+
+  html[data-shell-mode="phone"] .search{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) 46px;
+    gap:4px;
+    margin-top:3px;
+  }
+
+  html[data-shell-mode="phone"] .search .input,
+  html[data-shell-mode="phone"] .search .btn{
+    height:24px;
+    min-height:24px;
+    font-size:11px;
+  }
+
+  html[data-shell-mode="phone"] .search .input{
+    padding:0 8px;
+  }
+
+  html[data-shell-mode="phone"] .search .btn{
+    min-width:0;
+    padding:0 6px;
+  }
+
+  html[data-shell-mode="phone"] .series-list{
+    flex:0 0 50px;
+    min-height:50px;
+    height:50px;
+    margin-top:4px;
+    gap:5px;
+    padding:0;
+  }
+
+  html[data-shell-mode="phone"] .item{
+    flex:0 0 clamp(142px, 39vw, 164px);
+    height:48px;
+    padding:5px 7px;
+    border-radius:7px;
+  }
+
+  html[data-shell-mode="phone"] .item.active::before{
+    top:5px;
+    bottom:5px;
+    width:3px;
+  }
+
+  html[data-shell-mode="phone"] .item-top{
+    min-height:12px;
+    gap:4px;
+  }
+
+  html[data-shell-mode="phone"] .item-left{
+    gap:5px;
+  }
+
+  html[data-shell-mode="phone"] .dot{
+    width:8px;
+    height:8px;
+  }
+
+  html[data-shell-mode="phone"] .name{
+    font-size:10px;
+    line-height:12px;
+  }
+
+  html[data-shell-mode="phone"] .unit{
+    font-size:9px;
+    line-height:12px;
+    margin-left:2px;
+  }
+
+  html[data-shell-mode="phone"] .item-mid{
+    margin-top:2px;
+    display:flex;
+    align-items:baseline;
+    gap:6px;
+    flex-wrap:nowrap;
+  }
+
+  html[data-shell-mode="phone"] .val{
+    font-size:14px;
+    line-height:1.05;
+  }
+
+  html[data-shell-mode="phone"] .delta{
+    min-width:0;
+    font-size:9px;
+    line-height:1.05;
+  }
+
+  html[data-shell-mode="phone"] .main{
+    gap:5px;
+  }
+
+  html[data-shell-mode="phone"] .controls{
+    padding:5px;
+    border-radius:8px;
+  }
+
+  html[data-shell-mode="phone"] .mode-row{
+    display:flex;
+    flex-wrap:nowrap;
+    align-items:center;
+    gap:5px;
+  }
+
+  html[data-shell-mode="phone"] .mode-pill{
+    height:28px;
+    min-height:28px;
+    padding:2px;
+    border-radius:8px;
+  }
+
+  html[data-shell-mode="phone"] #pillRecent.active{
+    flex:1 1 auto;
+    width:auto;
+    max-width:calc(100% - 57px);
+    min-width:0;
+  }
+
+  html[data-shell-mode="phone"] #pillReplay:not(.active){
+    flex:0 0 52px;
+    width:52px;
+    min-width:52px;
+  }
+
+  html[data-shell-mode="phone"] #pillReplay:not(.active) .pillhead{
+    width:100%;
+    min-width:0;
+    justify-content:center;
+    padding:0 6px;
+  }
+
+  html[data-shell-mode="phone"] #pillReplay:not(.active) .pillcontent{
+    display:none;
+  }
+
+  html[data-shell-mode="phone"] #pillReplay.active{
+    flex:1 1 100%;
+    width:100%;
+    max-width:100%;
+    min-height:72px;
+    align-items:stretch;
+  }
+
+  html[data-shell-mode="phone"] .pillhead,
+  html[data-shell-mode="phone"] .pillbtn{
+    height:24px;
+    font-size:10px;
+  }
+
+  html[data-shell-mode="phone"] .pillhead{
+    min-width:40px;
+    padding:0 7px;
+  }
+
+  html[data-shell-mode="phone"] .pillhead::after{
+    height:14px;
+    margin-left:6px;
+  }
+
+  html[data-shell-mode="phone"] .pillbtn{
+    min-width:34px;
+    padding:0 7px;
+  }
+
+  html[data-shell-mode="phone"] .pillcontent{
+    height:24px;
+  }
+
+  html[data-shell-mode="phone"] .tune-row{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:5px;
+    margin-top:5px;
+    overflow:visible;
+  }
+
+  html[data-shell-mode="phone"] .tune{
+    min-width:0;
+    display:grid;
+    grid-template-columns:auto minmax(0, 1fr);
+    align-items:center;
+    gap:4px;
+  }
+
+  html[data-shell-mode="phone"] .tag{
+    height:24px;
+    padding:0 7px;
+    font-size:10px;
+    border-radius:7px;
+  }
+
+  html[data-shell-mode="phone"] .tune .input{
+    width:100%;
+    min-width:0;
+    height:26px;
+    font-size:11px;
+  }
+
+  html[data-shell-mode="phone"] .action-row{
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0, 1fr));
+    gap:5px;
+    margin-top:5px;
+    padding-top:5px;
+    overflow:visible;
+  }
+
+  html[data-shell-mode="phone"] .action-row .btn{
+    width:100%;
+    min-width:0;
+    height:27px;
+    padding:0 4px;
+    font-size:10px;
+  }
+
+  html[data-shell-mode="phone"] .dashboard-status-row{
+    min-height:15px;
+    margin-top:3px;
+    gap:5px;
+    flex-wrap:nowrap;
+  }
+
+  html[data-shell-mode="phone"] .dashboard-status-row .freshness{
+    flex:0 1 48%;
+    max-width:48%;
+    font-size:10px;
+    line-height:15px;
+  }
+
+  html[data-shell-mode="phone"] .dashboard-status-row #chartStatus{
+    font-size:10px;
+    line-height:15px;
+  }
+
+  html[data-shell-mode="phone"] .chart-wrap{
+    min-height:0;
+    border-radius:8px;
+  }
+}
+
+/* 手机浏览模式二次收束：减少控件占高，但保留参数、时间、选区、导出和状态。 */
+@media (max-width: 879px){
+  html[data-shell-mode="phone"] .body{
+    grid-template-rows:98px minmax(0, 1fr);
+    gap:4px;
+  }
+
+  html[data-shell-mode="phone"] .left{
+    padding:4px;
+  }
+
+  html[data-shell-mode="phone"] .left-head{
+    min-height:14px;
+  }
+
+  html[data-shell-mode="phone"] .left-title,
+  html[data-shell-mode="phone"] .mini{
+    font-size:10px;
+    line-height:14px;
+  }
+
+  html[data-shell-mode="phone"] .search{
+    margin-top:2px;
+  }
+
+  html[data-shell-mode="phone"] .search .input,
+  html[data-shell-mode="phone"] .search .btn{
+    height:22px;
+    min-height:22px;
+    font-size:10px;
+  }
+
+  html[data-shell-mode="phone"] .series-list{
+    flex-basis:44px;
+    min-height:44px;
+    height:44px;
+    margin-top:3px;
+    gap:5px;
+  }
+
+  html[data-shell-mode="phone"] .item{
+    flex-basis:clamp(134px, 34vw, 150px);
+    height:42px;
+    padding:4px 6px;
+  }
+
+  html[data-shell-mode="phone"] .name{
+    font-size:9px;
+    line-height:11px;
+  }
+
+  html[data-shell-mode="phone"] .unit{
+    font-size:9px;
+    line-height:11px;
+  }
+
+  html[data-shell-mode="phone"] .val{
+    font-size:13px;
+  }
+
+  html[data-shell-mode="phone"] .delta{
+    font-size:9px;
+  }
+
+  html[data-shell-mode="phone"] .controls{
+    padding:4px;
+  }
+
+  html[data-shell-mode="phone"] .mode-row,
+  html[data-shell-mode="phone"] .tune-row{
+    gap:4px;
+  }
+
+  html[data-shell-mode="phone"] .mode-pill{
+    height:26px;
+    min-height:26px;
+  }
+
+  html[data-shell-mode="phone"] .pillhead,
+  html[data-shell-mode="phone"] .pillbtn{
+    height:22px;
+    font-size:10px;
+  }
+
+  html[data-shell-mode="phone"] .pillcontent{
+    height:22px;
+  }
+
+  html[data-shell-mode="phone"] .pillbtn{
+    min-width:32px;
+    padding:0 6px;
+  }
+
+  html[data-shell-mode="phone"] .tune-row{
+    margin-top:4px;
+  }
+
+  html[data-shell-mode="phone"] .tag{
+    height:22px;
+    padding:0 6px;
+  }
+
+  html[data-shell-mode="phone"] .tune .input{
+    height:24px;
+    font-size:10px;
+  }
+
+  html[data-shell-mode="phone"] .action-row{
+    gap:4px;
+    margin-top:4px;
+    padding-top:4px;
+  }
+
+  html[data-shell-mode="phone"] .action-row .btn{
+    height:25px;
+    font-size:10px;
+  }
+
+  html[data-shell-mode="phone"] .dashboard-status-row{
+    min-height:13px;
+    margin-top:2px;
+  }
+
+  html[data-shell-mode="phone"] .dashboard-status-row .freshness,
+  html[data-shell-mode="phone"] .dashboard-status-row #chartStatus{
+    font-size:9px;
+    line-height:13px;
+  }
+}
+
+/* 手机浏览模式三次收束：顶栏下方的参数和时间控件继续压低，把纵向空间让给图表。 */
+@media (max-width: 879px){
+  html[data-shell-mode="phone"] .body{
+    grid-template-rows:88px minmax(0, 1fr);
+    gap:3px;
+  }
+
+  html[data-shell-mode="phone"] .left{
+    padding:4px 5px;
+  }
+
+  html[data-shell-mode="phone"] .left-head{
+    min-height:13px;
+  }
+
+  html[data-shell-mode="phone"] .left-title,
+  html[data-shell-mode="phone"] .mini{
+    font-size:10px;
+    line-height:13px;
+  }
+
+  html[data-shell-mode="phone"] .search{
+    grid-template-columns:minmax(0, 1fr) 42px;
+    margin-top:2px;
+    gap:4px;
+  }
+
+  html[data-shell-mode="phone"] .search .input,
+  html[data-shell-mode="phone"] .search .btn{
+    height:21px;
+    min-height:21px;
+    font-size:10px;
+  }
+
+  html[data-shell-mode="phone"] .series-list{
+    flex-basis:38px;
+    min-height:38px;
+    height:38px;
+    margin-top:3px;
+    gap:5px;
+  }
+
+  html[data-shell-mode="phone"] .item{
+    flex-basis:clamp(122px, 32vw, 142px);
+    height:36px;
+    padding:3px 6px;
+    border-radius:7px;
+  }
+
+  html[data-shell-mode="phone"] .item.active::before{
+    top:4px;
+    bottom:4px;
+  }
+
+  html[data-shell-mode="phone"] .item-top{
+    min-height:11px;
+  }
+
+  html[data-shell-mode="phone"] .dot{
+    width:8px;
+    height:8px;
+  }
+
+  html[data-shell-mode="phone"] .name,
+  html[data-shell-mode="phone"] .unit{
+    font-size:9px;
+    line-height:11px;
+  }
+
+  html[data-shell-mode="phone"] .item-mid{
+    margin-top:1px;
+  }
+
+  html[data-shell-mode="phone"] .val{
+    font-size:13px;
+    line-height:1;
+  }
+
+  html[data-shell-mode="phone"] .delta{
+    display:none;
+  }
+
+  html[data-shell-mode="phone"] .controls{
+    padding:4px;
+    gap:3px;
+  }
+
+  html[data-shell-mode="phone"] .mode-row,
+  html[data-shell-mode="phone"] .tune-row{
+    gap:3px;
+  }
+
+  html[data-shell-mode="phone"] .mode-pill{
+    height:24px;
+    min-height:24px;
+    padding:2px;
+  }
+
+  html[data-shell-mode="phone"] #pillReplay:not(.active){
+    flex-basis:48px;
+    width:48px;
+    min-width:48px;
+  }
+
+  html[data-shell-mode="phone"] #pillRecent.active{
+    max-width:calc(100% - 51px);
+  }
+
+  html[data-shell-mode="phone"] .pillhead,
+  html[data-shell-mode="phone"] .pillbtn{
+    height:20px;
+    font-size:9px;
+  }
+
+  html[data-shell-mode="phone"] .pillhead{
+    min-width:35px;
+    padding:0 6px;
+  }
+
+  html[data-shell-mode="phone"] .pillbtn{
+    min-width:30px;
+    padding:0 5px;
+  }
+
+  html[data-shell-mode="phone"] .pillcontent{
+    height:20px;
+  }
+
+  html[data-shell-mode="phone"] .tune-row{
+    margin-top:3px;
+  }
+
+  html[data-shell-mode="phone"] .tag{
+    height:20px;
+    padding:0 6px;
+    font-size:9px;
+    border-radius:6px;
+  }
+
+  html[data-shell-mode="phone"] .tune .input{
+    height:22px;
+    font-size:10px;
+  }
+
+  html[data-shell-mode="phone"] .action-row{
+    gap:3px;
+    margin-top:3px;
+    padding-top:3px;
+  }
+
+  html[data-shell-mode="phone"] .action-row .btn{
+    height:23px;
+    font-size:10px;
+  }
+
+  html[data-shell-mode="phone"] .dashboard-status-row{
+    min-height:12px;
+    margin-top:1px;
+  }
+
+  html[data-shell-mode="phone"] .dashboard-status-row .freshness,
+  html[data-shell-mode="phone"] .dashboard-status-row #chartStatus{
+    font-size:9px;
+    line-height:12px;
+  }
+}
+
+/* 手机浏览模式四次收束：参数横滑，时间一行，精度和动作同一行。 */
+@media (max-width: 879px){
+  html[data-shell-mode="phone"] .body{
+    grid-template-rows:84px minmax(0, 1fr);
+    gap:3px;
+  }
+
+  html[data-shell-mode="phone"] .left{
+    padding:4px;
+  }
+
+  html[data-shell-mode="phone"] .left-head{
+    min-height:12px;
+  }
+
+  html[data-shell-mode="phone"] .left-title,
+  html[data-shell-mode="phone"] .mini{
+    font-size:9px;
+    line-height:12px;
+  }
+
+  html[data-shell-mode="phone"] .search{
+    grid-template-columns:minmax(0, 1fr) 40px;
+    gap:3px;
+    margin-top:2px;
+  }
+
+  html[data-shell-mode="phone"] .search .input,
+  html[data-shell-mode="phone"] .search .btn{
+    height:20px;
+    min-height:20px;
+    font-size:9px;
+  }
+
+  html[data-shell-mode="phone"] .series-list{
+    flex-basis:35px;
+    min-height:35px;
+    height:35px;
+    margin-top:3px;
+    gap:4px;
+  }
+
+  html[data-shell-mode="phone"] .item{
+    flex-basis:clamp(118px, 31vw, 136px);
+    height:34px;
+    padding:3px 6px;
+  }
+
+  html[data-shell-mode="phone"] .item.active::before{
+    top:4px;
+    bottom:4px;
+    width:3px;
+  }
+
+  html[data-shell-mode="phone"] .item-top{
+    min-height:10px;
+    gap:4px;
+  }
+
+  html[data-shell-mode="phone"] .dot{
+    width:7px;
+    height:7px;
+  }
+
+  html[data-shell-mode="phone"] .name,
+  html[data-shell-mode="phone"] .unit{
+    font-size:8px;
+    line-height:10px;
+  }
+
+  html[data-shell-mode="phone"] .item-mid{
+    margin-top:1px;
+    gap:4px;
+  }
+
+  html[data-shell-mode="phone"] .val{
+    font-size:12px;
+  }
+
+  html[data-shell-mode="phone"] .main{
+    gap:3px;
+  }
+
+  html[data-shell-mode="phone"] .controls{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:3px;
+    padding:3px;
+  }
+
+  html[data-shell-mode="phone"] .mode-row{
+    flex:0 0 100%;
+    width:100%;
+    height:23px;
+    min-height:23px;
+    gap:3px;
+    margin:0;
+  }
+
+  html[data-shell-mode="phone"] .mode-pill{
+    height:23px;
+    min-height:23px;
+    padding:2px;
+  }
+
+  html[data-shell-mode="phone"] #pillRecent.active{
+    max-width:calc(100% - 47px);
+  }
+
+  html[data-shell-mode="phone"] #pillReplay:not(.active){
+    flex-basis:44px;
+    width:44px;
+    min-width:44px;
+  }
+
+  html[data-shell-mode="phone"] .pillhead,
+  html[data-shell-mode="phone"] .pillbtn{
+    height:19px;
+    font-size:9px;
+  }
+
+  html[data-shell-mode="phone"] .pillhead{
+    min-width:33px;
+    padding:0 5px;
+  }
+
+  html[data-shell-mode="phone"] .pillcontent{
+    height:19px;
+  }
+
+  html[data-shell-mode="phone"] .pillbtn{
+    min-width:29px;
+    padding:0 5px;
+  }
+
+  html[data-shell-mode="phone"] .tune-row{
+    flex:1 1 150px;
+    min-width:0;
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:3px;
+    margin:0;
+  }
+
+  html[data-shell-mode="phone"] .tune{
+    min-width:0;
+    display:grid;
+    grid-template-columns:auto minmax(0, 1fr);
+    gap:3px;
+  }
+
+  html[data-shell-mode="phone"] .tag{
+    height:20px;
+    padding:0 5px;
+    font-size:9px;
+  }
+
+  html[data-shell-mode="phone"] .tune .input{
+    height:20px;
+    min-height:20px;
+    font-size:9px;
+    padding:0 6px;
+  }
+
+  html[data-shell-mode="phone"] .action-row{
+    flex:1 1 184px;
+    min-width:0;
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0, 1fr));
+    gap:3px;
+    margin:0;
+    padding:0;
+    border-top:0;
+  }
+
+  html[data-shell-mode="phone"] .action-row .btn{
+    height:20px;
+    min-width:0;
+    padding:0 3px;
+    font-size:9px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:clip;
+  }
+
+  html[data-shell-mode="phone"] .dashboard-status-row{
+    flex:0 0 100%;
+    width:100%;
+    min-height:11px;
+    margin:0;
+    gap:4px;
+  }
+
+  html[data-shell-mode="phone"] .dashboard-status-row .freshness,
+  html[data-shell-mode="phone"] .dashboard-status-row #chartStatus{
+    font-size:8px;
+    line-height:11px;
+  }
+
+  html[data-shell-mode="phone"] .chart-wrap{
+    border-radius:8px;
+  }
+}
+
+/* 2026-07-10：手机仪表最终覆盖。
+   参数选择和时间工具条保持低高度；动作按钮使用短文案，不能再截字。 */
+@media (max-width: 879px){
+  html[data-shell-mode="phone"] .body{
+    grid-template-rows:84px minmax(0, 1fr);
+    gap:3px;
+  }
+
+  html[data-shell-mode="phone"] .left,
+  html[data-shell-mode="phone"] .controls,
+  html[data-shell-mode="phone"] .chart-wrap{
+    border-radius:8px;
+  }
+
+  html[data-shell-mode="phone"] .series-list,
+  html[data-shell-mode="phone"] .pillcontent{
+    scrollbar-width:none;
+  }
+
+  html[data-shell-mode="phone"] .series-list::-webkit-scrollbar,
+  html[data-shell-mode="phone"] .pillcontent::-webkit-scrollbar{
+    display:none;
+  }
+
+  html[data-shell-mode="phone"] .item{
+    flex:0 0 clamp(118px, 31vw, 136px);
+  }
+
+  html[data-shell-mode="phone"] .controls{
+    min-height:0;
+  }
+
+  html[data-shell-mode="phone"] .mode-row{
+    min-width:0;
+  }
+
+  html[data-shell-mode="phone"] .pillcontent{
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  html[data-shell-mode="phone"] .pillbtn{
+    flex:0 0 auto;
+  }
+
+  html[data-shell-mode="phone"] .tune-row{
+    flex:1 1 148px;
+  }
+
+  html[data-shell-mode="phone"] .action-row{
+    flex:1 1 176px;
+  }
+
+  html[data-shell-mode="phone"] .action-row .btn{
+    height:20px;
+    min-height:20px;
+    padding:0 4px;
+    font-size:9px;
+    line-height:20px;
+    overflow:visible;
+    text-overflow:clip;
+  }
+
+  html[lang="en-US"][data-shell-mode="phone"] .action-row .btn{
+    font-size:8px;
+    padding:0 3px;
+  }
+
+  html[lang="en-US"][data-shell-mode="phone"] #pillRecent.active{
+    max-width:calc(100% - 47px);
+  }
+
+  html[lang="en-US"][data-shell-mode="phone"] #pillReplay:not(.active){
+    flex-basis:42px;
+    width:42px;
+    min-width:42px;
+  }
+
+  html[lang="en-US"][data-shell-mode="phone"] .pillhead{
+    min-width:32px;
+    padding:0 5px;
+    font-size:9px;
+  }
+
+  html[lang="en-US"][data-shell-mode="phone"] .pillhead::after{
+    margin-left:4px;
+  }
+
+  html[lang="en-US"][data-shell-mode="phone"] .pillbtn{
+    min-width:31px;
+    padding:0 5px;
+    font-size:9px;
+  }
+}
+
+/* 2026-07-10：手机数据仪表产品收束。
+   目标不是压缩桌面页，而是形成手机查看链路：参数横滑、时间低栏、图表优先。 */
+@media (max-width: 879px){
+  html[data-shell-mode="phone"],
+  html[data-shell-mode="phone"] body{
+    overflow:hidden;
+  }
+
+  html[data-shell-mode="phone"] .stage,
+  html[data-shell-mode="phone"] .shell{
+    width:100%;
+    height:100%;
+    min-width:0;
+    min-height:0;
+    overflow:hidden;
+  }
+
+  html[data-shell-mode="phone"] .body{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr);
+    grid-template-rows:116px minmax(0, 1fr);
+    gap:6px;
+    padding:0;
+    min-width:0;
+    min-height:0;
+    overflow:hidden;
+  }
+
+  html[data-shell-mode="phone"] .left,
+  html[data-shell-mode="phone"] .main,
+  html[data-shell-mode="phone"] .controls,
+  html[data-shell-mode="phone"] .chart-wrap{
+    min-width:0;
+    max-width:100%;
+    box-sizing:border-box;
+  }
+
+  html[data-shell-mode="phone"] .left{
+    height:116px;
+    min-height:116px;
+    padding:7px;
+    overflow:hidden;
+    border-radius:8px;
+  }
+
+  html[data-shell-mode="phone"] .left-head{
+    min-height:18px;
+    height:18px;
+    gap:8px;
+    align-items:center;
+  }
+
+  html[data-shell-mode="phone"] .left-title{
+    font-size:12px;
+    line-height:18px;
+  }
+
+  html[data-shell-mode="phone"] .mini{
+    font-size:10px;
+    line-height:14px;
+  }
+
+  html[data-shell-mode="phone"] .search{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) 48px;
+    gap:5px;
+    margin-top:4px;
+  }
+
+  html[data-shell-mode="phone"] .search .input,
+  html[data-shell-mode="phone"] .search .btn{
+    height:25px;
+    min-height:25px;
+    font-size:11px;
+    border-radius:7px;
+  }
+
+  html[data-shell-mode="phone"] .search .input{
+    padding:0 8px;
+  }
+
+  html[data-shell-mode="phone"] .search .btn{
+    min-width:0;
+    padding:0 6px;
+  }
+
+  html[data-shell-mode="phone"] .series-list{
+    display:flex;
+    flex:0 0 55px;
+    height:55px;
+    min-height:55px;
+    margin-top:5px;
+    gap:6px;
+    padding:0 0 1px 0;
+    overflow-x:auto;
+    overflow-y:hidden;
+    overscroll-behavior-x:contain;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  html[data-shell-mode="phone"] .series-list::-webkit-scrollbar{
+    display:none;
+  }
+
+  html[data-shell-mode="phone"] .item{
+    flex:0 0 max(154px, calc((100% - 6px) / 2));
+    height:52px;
+    min-width:0;
+    padding:6px 9px;
+    border-radius:8px;
+    overflow:hidden;
+  }
+
+  html[data-shell-mode="phone"] .item.active::before{
+    top:6px;
+    bottom:6px;
+    width:3px;
+  }
+
+  html[data-shell-mode="phone"] .item-top{
+    min-height:14px;
+    gap:5px;
+  }
+
+  html[data-shell-mode="phone"] .item-left{
+    min-width:0;
+    gap:6px;
+  }
+
+  html[data-shell-mode="phone"] .dot{
+    width:9px;
+    height:9px;
+  }
+
+  html[data-shell-mode="phone"] .name{
+    min-width:0;
+    max-width:100%;
+    font-size:11px;
+    line-height:14px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  html[data-shell-mode="phone"] .unit{
+    flex:0 0 auto;
+    font-size:10px;
+    line-height:14px;
+  }
+
+  html[data-shell-mode="phone"] .item-mid{
+    margin-top:3px;
+    display:flex;
+    align-items:baseline;
+    gap:7px;
+    flex-wrap:nowrap;
+  }
+
+  html[data-shell-mode="phone"] .val{
+    flex:0 1 auto;
+    min-width:0;
+    font-size:17px;
+    line-height:1;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  html[data-shell-mode="phone"] .delta{
+    flex:0 2 auto;
+    min-width:0;
+    display:block;
+    font-size:10px;
+    line-height:1;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  html[data-shell-mode="phone"] .item-sub{
+    display:none;
+  }
+
+  html[data-shell-mode="phone"] .main{
+    display:grid;
+    grid-template-rows:auto minmax(0, 1fr);
+    gap:6px;
+    overflow:hidden;
+  }
+
+  html[data-shell-mode="phone"] .controls{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr);
+    gap:5px;
+    padding:6px;
+    border-radius:8px;
+    overflow:hidden;
+  }
+
+  html[data-shell-mode="phone"] .mode-row{
+    display:flex;
+    flex-wrap:nowrap;
+    width:100%;
+    min-width:0;
+    height:30px;
+    min-height:30px;
+    margin:0;
+    gap:5px;
+    overflow:hidden;
+  }
+
+  html[data-shell-mode="phone"] .mode-pill{
+    height:30px;
+    min-height:30px;
+    padding:2px;
+    border-radius:8px;
+    min-width:0;
+    overflow:hidden;
+  }
+
+  html[data-shell-mode="phone"] #pillRecent.active{
+    flex:1 1 auto;
+    max-width:calc(100% - 55px);
+  }
+
+  html[data-shell-mode="phone"] #pillReplay:not(.active){
+    flex:0 0 50px;
+    width:50px;
+  }
+
+  html[data-shell-mode="phone"] #pillReplay:not(.active) .pillcontent{
+    display:none;
+  }
+
+  html[data-shell-mode="phone"] #pillReplay.active{
+    flex:1 1 100%;
+    width:100%;
+    max-width:100%;
+    height:auto;
+    min-height:70px;
+    align-items:stretch;
+  }
+
+  html[data-shell-mode="phone"] .pillhead,
+  html[data-shell-mode="phone"] .pillbtn{
+    height:24px;
+    min-height:24px;
+    border-radius:6px;
+    font-size:10px;
+    line-height:24px;
+  }
+
+  html[data-shell-mode="phone"] .pillhead{
+    min-width:36px;
+    padding:0 7px;
+  }
+
+  html[data-shell-mode="phone"] .pillhead::after{
+    height:14px;
+    margin-left:6px;
+  }
+
+  html[data-shell-mode="phone"] .pillcontent{
+    height:24px;
+    min-width:0;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  html[data-shell-mode="phone"] .pillcontent::-webkit-scrollbar{
+    display:none;
+  }
+
+  html[data-shell-mode="phone"] .pillbtn{
+    flex:0 0 auto;
+    min-width:36px;
+    padding:0 8px;
+  }
+
+  html[data-shell-mode="phone"] .tune-row{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:5px;
+    margin:0;
+    min-width:0;
+  }
+
+  html[data-shell-mode="phone"] .tune{
+    display:grid;
+    grid-template-columns:auto minmax(0, 1fr);
+    gap:4px;
+    min-width:0;
+    align-items:center;
+  }
+
+  html[data-shell-mode="phone"] .tag{
+    height:24px;
+    padding:0 7px;
+    border-radius:7px;
+    font-size:10px;
+    line-height:24px;
+  }
+
+  html[data-shell-mode="phone"] .tune .input{
+    width:100%;
+    min-width:0;
+    height:26px;
+    min-height:26px;
+    padding:0 7px;
+    font-size:11px;
+    border-radius:7px;
+  }
+
+  html[data-shell-mode="phone"] .action-row{
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0, 1fr));
+    gap:5px;
+    margin:0;
+    padding:0;
+    border-top:0;
+    min-width:0;
+  }
+
+  html[data-shell-mode="phone"] .action-row .btn{
+    width:100%;
+    min-width:0;
+    height:27px;
+    min-height:27px;
+    padding:0 4px;
+    border-radius:7px;
+    font-size:10px;
+    line-height:27px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:clip;
+  }
+
+  html[data-shell-mode="phone"] .dashboard-status-row{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr);
+    gap:2px;
+    margin:0;
+    min-height:0;
+  }
+
+  html[data-shell-mode="phone"] .dashboard-status-row .freshness,
+  html[data-shell-mode="phone"] .dashboard-status-row #chartStatus{
+    max-width:100%;
+    font-size:10px;
+    line-height:13px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  html[data-shell-mode="phone"] .chart-wrap{
+    min-height:260px;
+    border-radius:8px;
+  }
+}
+
+/* 2026-07-10：最近/回放模式最终收束。
+   两个主按钮必须像互斥模式开关；手机回放展开不能被 30px 行高裁掉。 */
+.mode-pill{
+  border-color:var(--line2);
+  background:rgba(9,14,20,0.88);
+  transition:border-color .12s ease, background-color .12s ease, box-shadow .12s ease, opacity .12s ease;
+}
+
+.mode-pill.active{
+  border-color:rgba(75,141,255,0.72);
+  background:rgba(75,141,255,0.12);
+  box-shadow:0 0 0 1px rgba(75,141,255,0.12) inset;
+}
+
+.mode-pill.replay.active{
+  border-color:rgba(75,141,255,0.72);
+  background:rgba(75,141,255,0.12);
+  box-shadow:0 0 0 1px rgba(75,141,255,0.12) inset;
+}
+
+.mode-pill:not(.active){
+  opacity:.82;
+}
+
+.mode-pill:not(.active):hover{
+  opacity:1;
+  border-color:rgba(143,158,178,0.42);
+  background:rgba(255,255,255,0.045);
+}
+
+.mode-pill.active .pillhead{
+  background:linear-gradient(180deg, rgba(75,141,255,0.72), rgba(47,115,217,0.58));
+  color:#fff;
+  box-shadow:0 1px 0 rgba(255,255,255,0.16) inset;
+}
+
+.mode-pill:not(.active) .pillhead{
+  color:rgba(226,232,240,0.72);
+}
+
+@media (max-width: 879px){
+  html[data-shell-mode="phone"] .mode-row{
+    overflow:visible;
+  }
+
+  html[data-shell-mode="phone"] .mode-row.mode-recent{
+    display:flex;
+    flex-wrap:nowrap;
+    height:30px;
+    min-height:30px;
+    overflow:hidden;
+  }
+
+  html[data-shell-mode="phone"] .mode-row.mode-replay{
+    display:grid;
+    grid-template-columns:50px minmax(0, 1fr);
+    gap:5px;
+    height:auto;
+    min-height:92px;
+    align-items:stretch;
+    overflow:visible;
+  }
+
+  html[data-shell-mode="phone"] .mode-row.mode-replay #pillRecent:not(.active){
+    grid-column:1;
+    width:50px;
+    min-width:50px;
+    max-width:50px;
+    height:30px;
+    min-height:30px;
+  }
+
+  html[data-shell-mode="phone"] .mode-row.mode-replay #pillRecent:not(.active) .pillhead{
+    width:100%;
+    min-width:0;
+    justify-content:center;
+    padding:0 6px;
+  }
+
+  html[data-shell-mode="phone"] .mode-row.mode-replay #pillReplay.active{
+    grid-column:2;
+    width:100%;
+    max-width:100%;
+    min-height:92px;
+    height:auto;
+    overflow:visible;
+    align-items:stretch;
+  }
+
+  html[data-shell-mode="phone"] #pillReplay.active .pillhead{
+    align-self:stretch;
+    justify-content:center;
+    height:24px;
+    min-height:24px;
+  }
+
+  html[data-shell-mode="phone"] #pillReplay.active .pillcontent{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr);
+    grid-auto-rows:24px;
+    gap:5px;
+    height:auto;
+    min-width:0;
+    overflow:visible;
+  }
+
+  html[data-shell-mode="phone"] #pillReplay.active .range-item{
+    display:grid;
+    grid-template-columns:24px minmax(0, 1fr);
+    gap:4px;
+    min-width:0;
+  }
+
+  html[data-shell-mode="phone"] #pillReplay.active .range-item .tag{
+    width:24px;
+    min-width:0;
+    padding:0;
+    justify-content:center;
+  }
+
+  html[data-shell-mode="phone"] #pillReplay.active .range-item .input{
+    width:100%;
+    min-width:0;
+    height:24px;
+    min-height:24px;
+    padding-left:7px;
+    padding-right:32px;
+    font-size:10px;
+    line-height:24px;
+  }
+
+  html[data-shell-mode="phone"] #pillReplay.active #btnApplyReplay{
+    width:100%;
+    height:24px;
+    min-height:24px;
+    font-size:10px;
+  }
+
+  html[lang="en-US"][data-shell-mode="phone"] .mode-row.mode-replay{
+    grid-template-columns:48px minmax(0, 1fr);
+  }
+
+  html[lang="en-US"][data-shell-mode="phone"] .mode-row.mode-replay #pillRecent:not(.active){
+    width:48px;
+    min-width:48px;
+    max-width:48px;
+  }
+}

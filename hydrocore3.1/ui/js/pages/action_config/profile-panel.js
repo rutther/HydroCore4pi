@@ -1,5 +1,5 @@
 import { AC_STATE } from "./store.js";
-import { getAcText } from "./text.js";
+import { getAcText } from "./text.js?v=system-layout-clean-20260711-2";
 
 function uniqueTypes(items) {
   return [...new Set(items.map((x) => x.type))];
@@ -7,6 +7,17 @@ function uniqueTypes(items) {
 
 function versionsByType(items, type) {
   return items.filter((x) => x.type === type);
+}
+
+function boardTypeLabel(type) {
+  return type || "-";
+}
+
+function boardPresetLabel(itemOrVersion) {
+  if (typeof itemOrVersion === "object") {
+    return itemOrVersion?.filename || itemOrVersion?.version || "-";
+  }
+  return itemOrVersion ? String(itemOrVersion) : "-";
 }
 
 function escapeHtml(value) {
@@ -53,7 +64,7 @@ export function renderProfilePanel() {
   for (const type of types) {
     const op = document.createElement("option");
     op.value = type;
-    op.textContent = type;
+    op.textContent = boardTypeLabel(type);
     typeSelect.appendChild(op);
   }
 
@@ -69,7 +80,7 @@ export function renderProfilePanel() {
   for (const item of versions) {
     const op = document.createElement("option");
     op.value = item.filename;
-    op.textContent = item.version;
+    op.textContent = boardPresetLabel(item);
     versionSelect.appendChild(op);
   }
 
@@ -97,7 +108,6 @@ export function renderProfilePanel() {
     const defaultFreq = profile.capabilities?.pwm_default_freq_hz ?? "-";
     const openLevel = profile.defaults?.switch_open_level || "-";
     const f = tx.profile.fields;
-
     summaryBox.innerHTML = `
       <div class="ac-summary-row"><div class="ac-summary-key">${f.name}</div><div class="ac-summary-val">${escapeHtml(profile.name || "-")}</div></div>
       <div class="ac-summary-row"><div class="ac-summary-key">${f.description}</div><div class="ac-summary-val">${escapeHtml(profile.description || "-")}</div></div>
@@ -115,10 +125,13 @@ export function renderProfilePanel() {
     currentBox.textContent = tx.profile.notConfirmed;
   } else {
     const f = tx.profile.fields;
+    const currentName = current.profile?.name || current.filename || "-";
+    const currentDesc = current.profile?.description || "";
     currentBox.innerHTML = `
-      <div class="ac-current-row"><span class="ac-current-key">${f.file}</span><span class="ac-current-val">${escapeHtml(current.filename || "-")}</span></div>
-      <div class="ac-current-row"><span class="ac-current-key">${f.type}</span><span class="ac-current-val">${escapeHtml(current.type || "-")}</span></div>
-      <div class="ac-current-row"><span class="ac-current-key">${f.version}</span><span class="ac-current-val">${escapeHtml(current.version || "-")}</span></div>
+      <div class="ac-current-row"><span class="ac-current-key">${f.name}</span><span class="ac-current-val">${escapeHtml(currentName)}</span></div>
+      <div class="ac-current-row"><span class="ac-current-key">${f.type}</span><span class="ac-current-val">${escapeHtml(boardTypeLabel(current.type))}</span></div>
+      <div class="ac-current-row"><span class="ac-current-key">${f.version}</span><span class="ac-current-val">${escapeHtml(boardPresetLabel(current))}</span></div>
+      ${currentDesc ? `<div class="ac-current-row ac-current-row-muted"><span class="ac-current-key">${f.description}</span><span class="ac-current-val">${escapeHtml(currentDesc)}</span></div>` : ""}
     `;
   }
 }

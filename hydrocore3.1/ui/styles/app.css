@@ -1,4 +1,4 @@
-﻿/* 文件：ui/styles/app.css
+/* 文件：ui/styles/app.css
  * 职责：少量页面级微调（避免把全部规则塞进 components/layout）
  */
 
@@ -32,7 +32,212 @@
 #subpage-sensors #protoTable{
   min-height: 200px;
   max-height: 360px;
+  max-width: 100%;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 2026-07-11: final task-plan readability pass.
+   Keep the planning screen compact, operational, and free of backend-looking panels. */
+#page-tasks .task-runtime-strip{
+  min-height:28px !important;
+  padding:0 !important;
+  border-radius:8px !important;
+  background:transparent !important;
+}
+
+#page-tasks .task-runtime-metrics{
+  display:flex !important;
+  align-items:center !important;
+  min-width:0 !important;
+  gap:0 !important;
+}
+
+#page-tasks .task-runtime-metric{
+  display:flex !important;
+  align-items:center !important;
+  gap:5px !important;
+  min-height:28px !important;
+  padding:0 12px !important;
+}
+
+#page-tasks .task-runtime-metric > div{
+  display:flex !important;
+  align-items:baseline !important;
+  gap:5px !important;
+  min-width:0 !important;
+}
+
+#page-tasks .task-runtime-metric span:not(.task-runtime-dot){
+  font-size:11px !important;
+  line-height:1 !important;
+  color:var(--muted) !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-runtime-metric strong{
+  display:inline !important;
+  margin:0 !important;
+  font-size:12px !important;
+  line-height:1 !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-runtime-safe-actions{
+  display:flex !important;
+  align-items:center !important;
+  gap:6px !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control,
+#page-tasks .task-runtime-control summary{
+  width:auto !important;
+  min-width:72px !important;
+  height:26px !important;
+  min-height:26px !important;
+  padding:0 10px !important;
+}
+
+#page-tasks .rule-condition-row .task-plan-grid-trigger{
+  grid-template-columns:repeat(5, minmax(0, 1fr)) !important;
+  gap:8px !important;
+}
+
+#page-tasks .rule-condition-row .task-plan-grid-trigger .ac-wide{
+  grid-column:1 / -1 !important;
+}
+
+#page-tasks .rule-condition-row label{
+  min-width:0 !important;
+}
+
+#page-tasks .rule-condition-row .input,
+#page-tasks .rule-condition-row select,
+#page-tasks .rule-condition-row input{
+  min-width:0 !important;
+}
+
+#page-tasks .task-condition-preview{
+  min-height:30px !important;
+  padding:6px 10px !important;
+  border-radius:7px !important;
+  color:var(--text) !important;
+  background:rgba(255,255,255,0.035) !important;
+}
+
+#page-tasks .task-action-bar-v2 .btn{
+  min-height:34px !important;
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-strip{
+    grid-template-columns:minmax(0, 1fr) !important;
+    gap:6px !important;
+    padding:5px !important;
+  }
+
+  #page-tasks .task-runtime-metrics{
+    display:grid !important;
+    grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+    border-radius:7px !important;
+  }
+
+  #page-tasks .task-runtime-metric{
+    min-height:30px !important;
+    padding:0 6px !important;
+    border-right:1px solid var(--panel-line) !important;
+  }
+
+  #page-tasks .task-runtime-metric:last-child{
+    border-right:0 !important;
+  }
+
+  #page-tasks .task-runtime-metric > div{
+    display:grid !important;
+    gap:2px !important;
+  }
+
+  #page-tasks .task-runtime-metric span:not(.task-runtime-dot),
+  #page-tasks .task-runtime-metric strong{
+    display:block !important;
+    max-width:100% !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    margin-top:0 !important;
+    justify-content:flex-end !important;
+  }
+
+  #page-tasks .rule-condition-row .task-plan-grid-trigger{
+    grid-template-columns:minmax(0, 1fr) !important;
+  }
+
+  #page-tasks .rule-condition-row .task-plan-grid-trigger .ac-wide{
+    grid-column:1 / -1 !important;
+  }
+}
+
+.content,
+.list,
+pre,
+textarea{
+  scrollbar-color: var(--accent-line-strong) rgba(255,255,255,0.08);
+  scrollbar-width: thin;
+}
+
+.content::-webkit-scrollbar,
+.list::-webkit-scrollbar,
+pre::-webkit-scrollbar,
+textarea::-webkit-scrollbar{
+  width: 10px;
+  height: 10px;
+}
+
+.content::-webkit-scrollbar-track,
+.list::-webkit-scrollbar-track,
+pre::-webkit-scrollbar-track,
+textarea::-webkit-scrollbar-track{
+  background: rgba(255,255,255,0.06);
+  border-radius: 999px;
+}
+
+.content::-webkit-scrollbar-thumb,
+.list::-webkit-scrollbar-thumb,
+pre::-webkit-scrollbar-thumb,
+textarea::-webkit-scrollbar-thumb{
+  background: var(--accent-line-strong);
+  border-radius: 999px;
+  border: 2px solid rgba(0,0,0,0.35);
+}
+
+#subpage-sensors #protoTable table{
+  min-width: 680px;
+}
+
+#subpage-sensors #protoTable th,
+#subpage-sensors #protoTable td{
+  white-space: nowrap;
+}
+
+#subpage-sensors .proto-table-title{
+  margin-top: 10px;
+  opacity: 0.9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#subpage-sensors .proto-scroll-hint{
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 
@@ -61,20 +266,101 @@
   overflow:auto;
 }
 
-/* 窄屏（<=799）自动改为上下堆叠，保持你全局“<800 竖屏”的规则一致 */
-@media (max-width: 799px){
+/* 手机浏览模式（<880px）自动改为上下堆叠。 */
+@media (max-width: 879px){
   #subpage-sensors .proto-sources{
     grid-template-columns:1fr;
   }
+
+  #subpage-sensors .grid2,
+  #subpage-sensors .card{
+    overflow:hidden;
+  }
+
+  #subpage-sensors #btnProtoRefresh,
+  #subpage-sensors #btnProtoUpload{
+    flex:1 1 calc(50% - 6px);
+    width:auto !important;
+    min-width:0;
+    padding:0 10px;
+  }
+
+  #subpage-sensors #protoStatus{
+    flex:1 1 100% !important;
+    width:100%;
+    min-width:0;
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+    line-height:1.35;
+  }
+
+  #subpage-sensors .proto-list{
+    min-height:112px;
+    max-height:180px;
+    padding:10px;
+  }
+
+  #subpage-sensors .proto-list .device{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr);
+    gap:6px;
+    margin-bottom:10px;
+  }
+
+  #subpage-sensors .proto-list .pill{
+    width:100%;
+    min-width:0;
+    justify-content:center;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  #subpage-sensors .proto-list .pill.gray{
+    height:auto;
+    min-height:30px;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+    line-height:1.25;
+    font-size:12px;
+    padding:6px 10px;
+    text-align:center;
+  }
+
+  #subpage-sensors .card:nth-of-type(2) > .row:first-of-type{
+    align-items:stretch !important;
+    justify-content:flex-start !important;
+  }
+
+  #subpage-sensors .card:nth-of-type(2) > .row:first-of-type > .row{
+    flex:1 1 100%;
+    min-width:0;
+    gap:8px;
+  }
+
+  #subpage-sensors #protoName{
+    flex:1 1 160px;
+    width:auto;
+    min-width:0 !important;
+  }
+
+  #subpage-sensors #protoSourcePill{
+    flex:1 1 100%;
+    width:100%;
+    min-width:0;
+    height:auto;
+    min-height:34px;
+    justify-content:center;
+    white-space:normal;
+    line-height:1.25;
+    text-align:center;
+  }
+
+  #subpage-sensors #btnProtoDelete{
+    width:100% !important;
+  }
 }
-
-
-
-
-
-
-
-
 
 /* ===== verify（设备定义）子页：局部样式（严格限定作用域） ===== */
 #subpage-verify .row{
@@ -242,7 +528,7 @@
   border-radius:999px !important;
 
   background:transparent !important;
-  border:1px solid rgba(0,255,0,0.9) !important;
+  border:1px solid var(--accent-focus) !important;
   color:#fff !important;
 
   padding:0 14px !important;
@@ -255,7 +541,7 @@
 }
 
 #subpage-verify #defRowAdd:hover{
-  border-color: rgba(0,255,0,1) !important;
+  border-color: var(--accent) !important;
 }
 
 
@@ -268,10 +554,28 @@
 }
 
 #subpage-plan .plan-meta-row{
-  display:flex;
+  display:grid;
+  grid-template-columns:minmax(112px, auto) minmax(120px, 170px) minmax(54px, 1fr);
   align-items:center;
   gap:10px;
-  flex-wrap:wrap;
+}
+
+#subpage-plan .plan-meta-row .pill{
+  min-width:112px;
+  justify-content:center;
+  border-radius:8px;
+  background:var(--accent-fill);
+}
+
+#subpage-plan .plan-meta-row .input{
+  width:100% !important;
+  min-width:0;
+  text-align:left !important;
+}
+
+#subpage-plan .plan-meta-row .mini{
+  min-width:0;
+  white-space:normal;
 }
 
 /* 概览区：避免 mini-card 被压得很难看 */
@@ -297,6 +601,69 @@
   margin: 0 0 8px 0;
 }
 
+#subpage-plan .btn.btn-pill{
+  width:auto;
+  min-width:112px;
+  border-radius:8px !important;
+  background:rgba(255,255,255,0.045) !important;
+  border-color:var(--accent-line) !important;
+}
+
+#subpage-plan .btn.btn-pill.btn-positive,
+#subpage-plan #btnPlanMetaSave{
+  background:var(--accent-fill) !important;
+  border-color:var(--accent-line-strong) !important;
+}
+
+#subpage-plan .btn.btn-pill.btn-danger{
+  background:rgba(170, 28, 55, 0.58) !important;
+  border-color:rgba(255, 91, 118, 0.72) !important;
+}
+
+#subpage-plan .btn.btn-pill:disabled{
+  background:rgba(255,255,255,0.08) !important;
+  border-color:rgba(255,255,255,0.14) !important;
+  color:rgba(255,255,255,0.58) !important;
+  opacity:1;
+  cursor:not-allowed;
+}
+
+#subpage-plan #btnPlanMetaCancel{
+  background:rgba(255,255,255,0.10) !important;
+  border-color:rgba(255,255,255,0.16) !important;
+}
+
+#subpage-plan .poller-pill{
+  min-width:84px;
+  justify-content:center;
+  border-radius:8px;
+}
+
+#subpage-plan .poller-pill.running{
+  background:var(--accent-fill);
+  border:1px solid var(--accent-line-strong);
+}
+
+#subpage-plan .poller-pill.stopped{
+  background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.18);
+}
+
+#subpage-plan .poller-pill.unknown{
+  background:rgba(255,255,255,0.06);
+  border:1px solid var(--accent-line-soft);
+}
+
+#subpage-plan #planMetaStatus{
+  flex:1 1 100% !important;
+  width:100% !important;
+  min-width:0;
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  line-height:1.35;
+}
+
 /* 宽屏收敛为“工具条感” */
 @media (min-width: 1200px){
   #subpage-plan .poller-bar{
@@ -306,6 +673,32 @@
   /* 你的按钮高度在 HTML inline 写死 36px，因此这里必须用 !important 才能压缩 */
   #subpage-plan .poller-bar .btn.btn-pill{
     height: 32px !important;
+  }
+}
+
+@media (max-width: 879px){
+  #subpage-plan .plan-meta-row{
+    grid-template-columns:minmax(96px, 0.85fr) minmax(104px, 1fr) minmax(44px, 0.5fr);
+  }
+
+  #subpage-plan .plan-meta-row .pill{
+    min-width:0;
+    padding:0 10px;
+    font-size:14px;
+  }
+
+  #subpage-plan .plan-meta-row .input{
+    height:36px;
+    font-size:15px;
+  }
+
+  #subpage-plan .poller-bar{
+    padding:12px;
+  }
+
+  #subpage-plan .poller-bar .btn.btn-pill{
+    flex:1 1 calc(50% - 6px);
+    min-width:0;
   }
 }
 
@@ -340,6 +733,7 @@
   height:100%;
   border:0;
   border-radius:0;
+  touch-action:none;
 }
 
 
@@ -386,7 +780,7 @@
 }
 
 #page-dashboard .dash-series-list{
-  border:1px dashed rgba(0,255,0,0.45);
+  border:1px dashed var(--accent-line);
   border-radius:12px;
   padding:10px;
   overflow:auto;
@@ -405,14 +799,14 @@
 }
 
 #page-dashboard .dash-item:hover{
-  background: rgba(0,255,0,0.08);
+  background: var(--accent-soft);
 }
 
 #page-dashboard .dash-swatch{
   width:16px;
   height:16px;
   border-radius:6px;
-  border:1px solid rgba(0,255,0,0.55);
+  border:1px solid var(--accent-line-strong);
   margin-top:2px;
 }
 
@@ -464,7 +858,7 @@
 #page-dashboard #dashCanvas{
   width:100%;
   height:100%;
-  border:1px dashed rgba(0,255,0,0.45);
+  border:1px dashed var(--accent-line);
   border-radius:12px;
   background: rgba(0,0,0,0.25);
 }
@@ -530,7 +924,7 @@
 }
 
 #page-action_config .ac-inline-note{
-  border:1px solid rgba(0,255,0,0.18);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(0,0,0,0.16);
   padding:10px 12px;
@@ -553,7 +947,7 @@
 }
 
 #page-tasks .task-stat-card{
-  border:1px solid rgba(0,255,0,0.22);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(0,0,0,0.2);
   padding:12px 14px;
@@ -583,7 +977,7 @@
 
 #page-tasks .task-item{
   width:100%;
-  border:1px solid rgba(0,255,0,0.22);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(0,0,0,0.18);
   color:var(--fg);
@@ -603,8 +997,8 @@
 }
 
 #page-tasks .task-item.active{
-  border-color:#f0b90b;
-  box-shadow:0 0 0 1px rgba(240,185,11,0.22) inset;
+  border-color:var(--accent-line-strong);
+  box-shadow:0 0 0 1px var(--accent-line-soft) inset;
 }
 
 #page-tasks .task-item-title{
@@ -649,6 +1043,21 @@
   color:#f7d16b;
 }
 
+#page-tasks .task-draft-note{
+  display:inline-flex;
+  align-items:center;
+  min-height:22px;
+  padding:0 2px;
+  color:rgba(247,209,107,0.9);
+  font-size:11px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+#page-tasks .task-draft-note[hidden]{
+  display:none;
+}
+
 #page-tasks .task-badge.danger{
   border-color:rgba(255,107,107,0.35);
   color:#ff8f8f;
@@ -675,7 +1084,7 @@
 
 #page-tasks .task-advanced-fields,
 #page-action_config .ac-advanced-details{
-  border:1px solid rgba(0,255,0,0.2);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   padding:10px 12px;
   background:rgba(0,0,0,0.16);
@@ -692,7 +1101,7 @@
 }
 
 #page-tasks .task-window-panel{
-  border:1px solid rgba(0,255,0,0.22);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   padding:12px;
   background:rgba(0,0,0,0.16);
@@ -702,7 +1111,7 @@
 }
 
 #page-tasks .task-inline-note{
-  border:1px solid rgba(0,255,0,0.18);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(0,0,0,0.16);
   padding:10px 12px;
@@ -734,7 +1143,7 @@
   justify-content:space-between;
   gap:12px;
   padding:10px 12px;
-  border:1px solid rgba(0,255,0,0.18);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(255,255,255,0.03);
 }
@@ -798,7 +1207,7 @@
   z-index:4;
   width:min(280px, 70vw);
   padding:10px 12px;
-  border:1px solid rgba(0,255,0,0.22);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:#09131e;
   color:rgba(255,255,255,0.88);
@@ -812,7 +1221,7 @@
   justify-content:space-between;
   align-items:flex-start;
   gap:12px;
-  border:1px solid rgba(0,255,0,0.18);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(0,0,0,0.16);
   padding:10px 12px;
@@ -843,7 +1252,7 @@
 }
 
 #page-tasks .task-form-section{
-  border:1px solid rgba(0,255,0,0.2);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(0,0,0,0.16);
   padding:10px;
@@ -868,6 +1277,14 @@
   justify-content:flex-start;
 }
 
+#page-tasks .task-section-check input[type="checkbox"]{
+  flex:0 0 auto;
+  width:16px;
+  height:16px;
+  margin:0 8px 0 0;
+  align-self:center;
+}
+
 #page-tasks .task-compact-check{
   min-height:0;
   align-items:flex-start;
@@ -881,7 +1298,7 @@
 }
 
 #page-tasks .task-control-panel{
-  border:1px solid rgba(0,255,0,0.2);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(0,0,0,0.16);
   margin-top:12px;
@@ -902,7 +1319,7 @@
 }
 
 #page-tasks .task-control-panel[open] summary{
-  border-bottom:1px solid rgba(0,255,0,0.16);
+  border-bottom:1px solid var(--accent-line-soft);
 }
 
 #page-tasks .task-control-body{
@@ -1017,7 +1434,7 @@
 }
 
 #page-tasks .task-step-main{
-  border:1px solid rgba(0,255,0,0.18);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(0,0,0,0.16);
   padding:10px 12px;
@@ -1035,7 +1452,7 @@
 }
 
 #page-tasks .task-log-row{
-  border:1px solid rgba(0,255,0,0.18);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(0,0,0,0.18);
   padding:12px;
@@ -1062,7 +1479,7 @@
 }
 
 #page-action_config .ac-guide-strip{
-  border:1px solid rgba(0,255,0,0.18);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(0,0,0,0.16);
   padding:10px 12px;
@@ -1174,7 +1591,7 @@
 
 #page-tasks .task-automation-quick{
   margin-top:10px;
-  border:1px solid rgba(0,255,0,0.2);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(0,0,0,0.16);
   padding:10px 12px;
@@ -1235,7 +1652,7 @@
 
 #page-tasks .task-plan-item{
   width:100%;
-  border:1px solid rgba(0,255,0,0.22);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(0,0,0,0.18);
   color:var(--fg);
@@ -1248,8 +1665,8 @@
 }
 
 #page-tasks .task-plan-item.active{
-  border-color:#f0b90b;
-  box-shadow:0 0 0 1px rgba(240,185,11,0.22) inset;
+  border-color:var(--accent-line-strong);
+  box-shadow:0 0 0 1px var(--accent-line-soft) inset;
 }
 
 #page-tasks .task-plan-item-main{
@@ -1275,7 +1692,7 @@
 }
 
 #page-tasks .task-decision-cell{
-  border:1px solid rgba(0,255,0,0.2);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(0,0,0,0.16);
   padding:9px 10px;
@@ -1316,7 +1733,7 @@
   flex-wrap:wrap;
   margin-top:10px;
   padding-top:10px;
-  border-top:1px solid rgba(0,255,0,0.14);
+  border-top:1px solid var(--accent-line-soft);
 }
 
 #page-tasks .task-action-bar .btn{
@@ -1345,7 +1762,7 @@
   }
 }
 
-@media (max-width: 799px){
+@media (max-width: 879px){
   #page-tasks .task-summary-grid{
     grid-template-columns:repeat(2, minmax(0, 1fr));
   }
@@ -1384,7 +1801,7 @@
   }
 }
 
-@media (max-width: 799px){
+@media (max-width: 879px){
   html,
   body{
     overflow-x:hidden;
@@ -1395,7 +1812,7 @@
     min-width:0;
     max-width:none;
     margin:0;
-    padding:8px;
+    padding:6px;
     box-sizing:border-box;
   }
 
@@ -1406,9 +1823,11 @@
   }
 
   .top-tabs{
-    flex-wrap:nowrap;
-    overflow-x:auto;
-    overflow-y:hidden;
+    display:grid;
+    grid-template-columns:minmax(0, 2fr) minmax(110px, 1fr);
+    align-items:center;
+    gap:6px;
+    overflow:hidden;
     padding-left:0;
     padding-right:0;
     scrollbar-width:none;
@@ -1419,12 +1838,75 @@
   }
 
   .top-left{
-    flex:0 0 auto;
+    display:flex;
     flex-wrap:nowrap;
+    gap:4px;
+    align-items:center;
+    min-width:0;
+    overflow-x:auto;
+    overflow-y:hidden;
+    overscroll-behavior-x:contain;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .top-left::-webkit-scrollbar{
+    display:none;
   }
 
   .top-right{
+    width:100%;
+    min-width:0;
+    margin-left:0;
+    justify-content:flex-end;
+    gap:3px;
+    overflow:hidden;
+  }
+
+  .tab{
+    height:34px;
+    padding:0 8px;
+    font-size:14px;
     flex:0 0 auto;
+  }
+
+  .icon-btn,
+  .logo-slot{
+    width:34px;
+    height:34px;
+    flex:0 0 34px;
+    border-radius:8px;
+  }
+
+  #btnTheme{
+    min-width:34px;
+    width:34px;
+    padding:0 3px;
+    font-size:11px;
+  }
+
+  .logo-slot{
+    font-size:11px;
+  }
+
+  .subtab{
+    height:34px;
+    padding:0 16px;
+    font-size:14px;
+    flex:0 0 auto;
+  }
+
+  .card{
+    padding:12px;
+    gap:10px;
+  }
+
+  .btn{
+    height:38px;
+    min-height:38px;
+    padding:0 14px;
+    font-size:14px;
+    line-height:1.15;
   }
 
   .divider,
@@ -1492,7 +1974,7 @@
   align-items:center;
   gap:12px;
   padding:2px 16px 2px 2px;
-  border-right:1px solid rgba(0,255,0,0.16);
+  border-right:1px solid var(--accent-line-soft);
 }
 
 #page-tasks .task-runtime-metric:last-child{
@@ -1539,13 +2021,45 @@
   background:#2f96ff;
 }
 
-#page-tasks .task-runtime-actions{
-  width:min(460px, 100%);
+#page-tasks .task-runtime-safe-actions{
+  width:min(250px, 100%);
   display:grid;
-  grid-template-columns:repeat(2, minmax(0, 1fr));
+  grid-template-columns:minmax(0, 1fr);
   gap:8px;
 }
 
+#page-tasks .task-runtime-control{
+  min-width:0;
+  border:1px solid var(--accent-line-soft);
+  border-radius:8px;
+  background:rgba(255,255,255,0.025);
+}
+
+#page-tasks .task-runtime-control summary{
+  list-style:none;
+  height:38px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  color:#fff;
+  font-size:13px;
+  font-weight:900;
+  user-select:none;
+}
+
+#page-tasks .task-runtime-control summary::-webkit-details-marker{
+  display:none;
+}
+
+#page-tasks .task-runtime-actions{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr);
+  gap:7px;
+  padding:0 8px 8px;
+}
+
+#page-tasks .task-runtime-safe-actions .btn,
 #page-tasks .task-runtime-actions .btn{
   width:auto;
   min-width:0;
@@ -1593,8 +2107,8 @@
 }
 
 #page-tasks .task-filter-pill{
-  min-height:32px;
-  padding:0 13px;
+  min-height:36px;
+  padding:0 14px;
   border:1px solid rgba(255,255,255,0.14);
   border-radius:8px;
   background:rgba(255,255,255,0.02);
@@ -1622,8 +2136,8 @@
 }
 
 #page-tasks .task-plan-item.active{
-  border-color:#f0b90b;
-  box-shadow:0 0 0 1px rgba(240,185,11,0.24) inset;
+  border-color:var(--accent-line-strong);
+  box-shadow:0 0 0 1px var(--accent-line-soft) inset;
 }
 
 #page-tasks .task-plan-item-main{
@@ -1742,7 +2256,7 @@
   justify-content:space-between;
   gap:14px;
   padding-bottom:8px;
-  border-bottom:1px solid rgba(0,255,0,0.14);
+  border-bottom:1px solid var(--accent-line-soft);
 }
 
 #page-tasks .task-plan-head-side{
@@ -1771,9 +2285,17 @@
   display:inline-flex;
   align-items:center;
   gap:10px;
+  min-height:34px;
+  max-width:160px;
   color:#fff;
   font-size:13px;
   font-weight:800;
+}
+
+#page-tasks .task-inline-toggle span:first-child{
+  min-width:0;
+  line-height:1.15;
+  white-space:normal;
 }
 
 #page-tasks .task-inline-toggle input{
@@ -1783,8 +2305,8 @@
 }
 
 #page-tasks .task-inline-toggle-ui{
-  width:46px;
-  height:26px;
+  width:50px;
+  height:30px;
   border-radius:999px;
   background:rgba(255,255,255,0.16);
   position:relative;
@@ -1796,8 +2318,8 @@
   position:absolute;
   top:3px;
   left:3px;
-  width:20px;
-  height:20px;
+  width:24px;
+  height:24px;
   border-radius:50%;
   background:#fff;
   transition:left .18s ease;
@@ -1958,7 +2480,7 @@
   gap:10px;
   flex-wrap:wrap;
   padding-top:8px;
-  border-top:1px solid rgba(0,255,0,0.14);
+  border-top:1px solid var(--accent-line-soft);
 }
 
 #page-tasks .task-plan-more-panel.open{
@@ -1991,7 +2513,30 @@
   }
 }
 
-@media (max-width: 980px){
+@media (max-width: 879px){
+  #subpage-plan #pollerStatusText,
+  #subpage-plan #planMetaStatus{
+    flex:1 1 100% !important;
+    width:100%;
+    min-width:0;
+    white-space:normal !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+    line-height:1.35;
+  }
+
+  #subpage-plan #btnPlanMetaRefresh,
+  #subpage-plan #btnPlanMetaEdit,
+  #subpage-plan #btnPlanMetaCancel,
+  #subpage-plan #btnPlanMetaSave{
+    flex:1 1 calc(50% - 6px);
+    width:auto !important;
+    min-width:0;
+    padding:0 10px;
+  }
+}
+
+@media (max-width: 879px){
   #page-tasks .task-runtime-metrics{
     display:grid;
     grid-template-columns:repeat(3, minmax(0, 1fr));
@@ -2000,7 +2545,7 @@
 
   #page-tasks .task-runtime-metric{
     padding:12px 14px;
-    border:1px solid rgba(0,255,0,0.16);
+    border:1px solid var(--accent-line-soft);
     border-radius:8px;
     background:rgba(255,255,255,0.02);
   }
@@ -2045,6 +2590,23 @@
 
   #page-tasks .task-runtime-actions{
     grid-template-columns:1fr;
+  }
+}
+
+@media (max-width: 860px){
+  #page-tasks .task-plan-list-head{
+    flex-direction:row;
+    align-items:center;
+    gap:8px;
+  }
+
+  #page-tasks .task-plan-list-head .btn{
+    flex:0 0 auto;
+    width:auto;
+    min-width:96px;
+    height:34px;
+    min-height:34px;
+    padding:0 12px;
   }
 }
 
@@ -2179,7 +2741,7 @@
 }
 
 #page-tasks .task-plan-note-panel{
-  border:1px solid rgba(0,255,0,0.16);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(255,255,255,0.02);
   padding:0 12px;
@@ -2228,7 +2790,7 @@
   gap:4px;
   min-width:0;
   padding:10px 12px;
-  border:1px solid rgba(0,255,0,0.16);
+  border:1px solid var(--accent-line-soft);
   border-radius:8px;
   background:rgba(255,255,255,0.02);
 }
@@ -2276,18 +2838,21 @@
 
 #page-tasks .task-inline-link{
   align-self:flex-start;
-  min-height:32px;
-  padding:0;
-  border:0;
-  background:none;
+  min-height:36px;
+  padding:0 12px;
+  border:1px solid rgba(73,166,255,0.36);
+  border-radius:8px;
+  background:rgba(73,166,255,0.08);
   color:#49a6ff;
-  font-size:12px;
+  font-size:13px;
   font-weight:800;
   cursor:pointer;
 }
 
 #page-tasks .task-inline-link:hover{
-  text-decoration:underline;
+  border-color:rgba(73,166,255,0.68);
+  background:rgba(73,166,255,0.14);
+  text-decoration:none;
 }
 
 #page-tasks .task-advanced-fields input[readonly]{
@@ -2308,7 +2873,7 @@
 
 #page-tasks .task-action-bar-v2{
   flex:0 0 auto;
-  border-top:1px solid rgba(0,255,0,0.14);
+  border-top:1px solid var(--accent-line-soft);
   padding-top:12px;
 }
 
@@ -2410,4 +2975,3651 @@
 
 #page-tasks .task-day-check:has(input:not(:checked)){
   color:rgba(255,255,255,0.72);
+}
+
+/* 任务计划手机首屏：先看计划列表，运行控制保持可见但不压住主内容。 */
+@media (max-width: 879px){
+  #page-tasks .content{
+    overflow:auto;
+    padding-bottom:6px;
+  }
+
+  #page-tasks #taskPageRoot,
+  #page-tasks .task-page-v2{
+    height:auto;
+    min-height:0;
+  }
+
+  #page-tasks .task-page-v2{
+    gap:6px;
+  }
+
+  #page-tasks .task-runtime-card{
+    padding:7px 8px;
+    border-radius:8px;
+  }
+
+  #page-tasks .task-runtime-strip{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr);
+    gap:6px;
+    align-items:stretch;
+  }
+
+  #page-tasks .task-runtime-metrics{
+    grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+    gap:5px;
+  }
+
+  #page-tasks .task-runtime-metric{
+    min-height:38px;
+    padding:6px 7px !important;
+    gap:6px;
+    border-radius:7px;
+  }
+
+  #page-tasks .task-runtime-dot{
+    width:8px;
+    height:8px;
+    box-shadow:none;
+  }
+
+  #page-tasks .task-runtime-metric span{
+    font-size:10px;
+    line-height:1.05;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  #page-tasks .task-runtime-metric strong{
+    font-size:12px;
+    line-height:1.1;
+    margin-top:1px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  #page-tasks .task-runtime-actions{
+    width:100%;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    gap:5px;
+  }
+
+  #page-tasks .task-runtime-actions .btn{
+    height:31px;
+    min-height:31px;
+    padding:0 6px;
+    font-size:11px;
+    border-radius:7px;
+  }
+
+  #page-tasks .task-subtabs{
+    gap:5px;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+
+  #page-tasks .task-subtabs::-webkit-scrollbar{
+    display:none;
+  }
+
+  #page-tasks .task-subtabs .subtab{
+    height:30px;
+    min-height:30px;
+    padding:0 12px;
+    font-size:12px;
+    border-radius:7px;
+  }
+
+  #page-tasks #taskWorkspace{
+    display:block;
+    height:auto;
+    max-height:none;
+  }
+
+  #page-tasks .task-workbench-v2{
+    display:block;
+    height:auto;
+    min-height:0;
+  }
+
+  #page-tasks .task-plan-list-card-v2,
+  #page-tasks .task-plan-detail-card-v2{
+    height:auto !important;
+    min-height:0;
+    overflow:visible;
+    padding:8px;
+    border-radius:8px;
+  }
+
+  #page-tasks .task-plan-detail-card-v2{
+    margin-top:8px;
+  }
+
+  #page-tasks .task-plan-list-head{
+    align-items:center;
+  }
+
+  #page-tasks .task-plan-list-head h3{
+    font-size:15px;
+    line-height:1.15;
+  }
+
+  #page-tasks .task-plan-list-head .btn{
+    height:30px;
+    min-height:30px;
+    min-width:78px;
+    padding:0 10px;
+    font-size:12px;
+  }
+
+  #page-tasks .task-plan-filters{
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    gap:5px;
+    padding-bottom:1px;
+    scrollbar-width:none;
+  }
+
+  #page-tasks .task-plan-filters::-webkit-scrollbar{
+    display:none;
+  }
+
+  #page-tasks .task-filter-pill{
+    flex:0 0 auto;
+    min-height:28px;
+    padding:0 10px;
+    font-size:11px;
+    border-radius:7px;
+  }
+
+  #page-tasks .task-plan-list{
+    flex:none;
+    max-height:250px;
+    overflow:auto;
+    padding-right:2px;
+  }
+
+  #page-tasks .task-plan-item{
+    padding:9px 10px;
+    border-radius:8px;
+  }
+
+  #page-tasks .task-plan-list-card-v2 .task-item-title{
+    font-size:13px;
+  }
+
+  #page-tasks .task-plan-detail-scroll{
+    overflow:visible;
+    padding-right:0;
+  }
+}
+
+/* 手机浏览模式：主导航固定为左侧可横滑路由 + 右侧全局工具。 */
+@media (max-width: 879px){
+  .top-tabs{
+    display:grid !important;
+    grid-template-columns:minmax(0, 2fr) minmax(108px, 1fr) !important;
+    grid-auto-rows:34px;
+    align-items:center;
+    gap:4px;
+    height:34px;
+    min-height:34px;
+    max-height:34px;
+    overflow:hidden;
+    padding:0 !important;
+  }
+
+  .top-left{
+    grid-column:1;
+    width:100%;
+    height:34px;
+    min-width:0;
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    align-items:center;
+    gap:4px;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+    overscroll-behavior-x:contain;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .top-left::-webkit-scrollbar{
+    display:none;
+  }
+
+  .top-right{
+    grid-column:2;
+    width:100%;
+    height:34px;
+    min-width:0;
+    display:flex;
+    flex-wrap:nowrap;
+    justify-content:flex-end;
+    align-items:center;
+    gap:3px;
+    overflow:hidden;
+  }
+
+  .tab{
+    height:32px;
+    min-width:max-content;
+    flex:0 0 auto;
+    padding:0 6px;
+    font-size:11px;
+    border-radius:8px;
+  }
+
+  .icon-btn,
+  .logo-slot{
+    width:31px;
+    height:31px;
+    min-width:31px;
+    flex:0 0 31px;
+    border-radius:8px;
+    font-size:11px;
+  }
+
+  html[lang="en-US"] .tab{
+    padding:0 6px;
+    font-size:10px;
+  }
+}
+
+/* 2026-07-10：顶栏结构最终覆盖。
+   顶行：Logo 左、语言/颜色右。第二行：路由独占横滑。 */
+.top-meta{
+  display:flex !important;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:0 8px !important;
+  min-height:32px;
+  flex:0 0 auto;
+  overflow:hidden;
+}
+
+.top-meta .logo-slot{
+  width:auto !important;
+  min-width:0 !important;
+  max-width:55%;
+  height:30px !important;
+  flex:0 1 auto !important;
+  border:0 !important;
+  background:transparent !important;
+  padding:0 2px !important;
+  justify-content:flex-start;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.top-meta .top-right{
+  flex:0 0 auto !important;
+  width:auto !important;
+  min-width:0 !important;
+  max-width:none !important;
+  height:32px;
+  display:flex !important;
+  flex-wrap:nowrap;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  margin-left:auto;
+  overflow:visible;
+}
+
+.top-meta .icon-btn{
+  flex:0 0 36px;
+  width:36px;
+  min-width:36px;
+  height:32px;
+}
+
+.top-meta #btnTheme{
+  width:38px;
+  min-width:38px;
+  max-width:38px;
+}
+
+.top-tabs{
+  display:flex !important;
+  grid-template-columns:none !important;
+  grid-auto-rows:auto !important;
+  width:100%;
+  min-width:0;
+  height:auto !important;
+  min-height:36px;
+  max-height:none !important;
+  padding:0 8px !important;
+  overflow:hidden;
+}
+
+.top-left{
+  width:100%;
+  height:auto !important;
+  min-width:0;
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  align-items:center;
+  gap:6px;
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+  overscroll-behavior-x:contain;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+
+.top-left::-webkit-scrollbar{
+  display:none;
+}
+
+@media (max-width: 879px){
+  .top-meta{
+    min-height:31px;
+    padding:0 !important;
+  }
+
+  .top-meta .logo-slot{
+    height:30px !important;
+    max-width:52%;
+    font-size:12px;
+  }
+
+  .top-meta .top-right{
+    height:30px;
+    gap:5px;
+  }
+
+  .top-meta .icon-btn,
+  .top-meta #btnTheme{
+    width:32px;
+    min-width:32px;
+    max-width:32px;
+    height:30px;
+    flex:0 0 32px;
+    padding:0;
+    border-radius:8px;
+  }
+
+  .top-tabs{
+    min-height:34px;
+    padding:0 !important;
+  }
+
+  .top-left{
+    gap:5px;
+    padding-right:0;
+  }
+
+  .top-left .tab{
+    height:32px;
+    min-width:max-content;
+    flex:0 0 auto;
+    padding:0 8px;
+    font-size:13px;
+    border-radius:8px;
+  }
+
+  html[lang="en-US"] .top-left{
+    gap:5px;
+  }
+
+html[lang="en-US"] .top-left .tab{
+    padding:0 7px;
+    font-size:11px;
+  }
+}
+
+/* 2026-07-11：任务计划运行条末端收口。
+   避免横屏标准视口下“刷新/控制”按钮组产生内部横向溢出。 */
+#page-tasks .task-runtime-strip{
+  grid-template-columns:minmax(0, 1fr) 126px !important;
+  max-width:100% !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+}
+
+#page-tasks .task-runtime-safe-actions{
+  width:126px !important;
+  max-width:126px !important;
+  min-width:0 !important;
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  justify-content:flex-end !important;
+  gap:4px !important;
+  overflow:hidden !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control,
+#page-tasks .task-runtime-control summary{
+  width:61px !important;
+  min-width:0 !important;
+  max-width:61px !important;
+  box-sizing:border-box !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control summary{
+  height:28px !important;
+  min-height:28px !important;
+  padding:0 5px !important;
+  font-size:11px !important;
+  line-height:28px !important;
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-strip{
+    grid-template-columns:minmax(0, 1fr) !important;
+    overflow:visible !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    width:100% !important;
+    max-width:100% !important;
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    gap:5px !important;
+    overflow:visible !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions > .btn,
+  #page-tasks .task-runtime-control,
+  #page-tasks .task-runtime-control summary{
+    width:100% !important;
+    max-width:100% !important;
+  }
+}
+
+/* 2026-07-11：任务计划 UI/交互收束。
+   只覆盖任务计划当前 V2 页面：弱化全局状态、压缩条件编辑、去掉主路径里的程序员式保护开关。 */
+#page-tasks .task-page-v2{
+  gap:6px !important;
+}
+
+#page-tasks .task-runtime-card{
+  padding:0 !important;
+  margin:0 0 4px !important;
+  border:0 !important;
+  background:transparent !important;
+}
+
+#page-tasks .task-runtime-strip{
+  min-height:28px !important;
+  padding:0 !important;
+  border-radius:0 !important;
+  border:0 !important;
+  background:transparent !important;
+  grid-template-columns:minmax(0, 1fr) auto !important;
+}
+
+#page-tasks .task-runtime-metrics{
+  display:flex !important;
+  align-items:center !important;
+  gap:12px !important;
+}
+
+#page-tasks .task-runtime-metric{
+  min-height:26px !important;
+  padding:0 !important;
+  border:0 !important;
+  background:transparent !important;
+  gap:5px !important;
+}
+
+#page-tasks .task-runtime-metric span:not(.task-runtime-dot){
+  display:inline !important;
+  margin-right:4px !important;
+  font-size:11px !important;
+  color:var(--muted) !important;
+}
+
+#page-tasks .task-runtime-metric strong{
+  display:inline !important;
+  margin:0 !important;
+  font-size:12px !important;
+  color:var(--text) !important;
+}
+
+#page-tasks .task-runtime-dot{
+  width:7px !important;
+  height:7px !important;
+  flex-basis:7px !important;
+}
+
+#page-tasks .task-runtime-safe-actions{
+  gap:4px !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control,
+#page-tasks .task-runtime-control summary{
+  width:auto !important;
+  min-width:50px !important;
+  height:27px !important;
+  min-height:27px !important;
+  padding:0 9px !important;
+  border-radius:7px !important;
+  font-size:11px !important;
+}
+
+#page-tasks .task-runtime-control[open] .task-runtime-actions{
+  top:30px !important;
+  width:168px !important;
+}
+
+#page-tasks .task-subtabs{
+  margin:0 0 6px !important;
+}
+
+#page-tasks .task-workbench-v2{
+  gap:8px !important;
+}
+
+#page-tasks .task-plan-list-card-v2,
+#page-tasks .task-plan-detail-card-v2{
+  border-radius:8px !important;
+}
+
+#page-tasks .task-plan-list-card-v2{
+  padding:10px !important;
+}
+
+#page-tasks .task-plan-list-head{
+  margin-bottom:7px !important;
+}
+
+#page-tasks .task-plan-list-head h3{
+  font-size:17px !important;
+}
+
+#page-tasks .task-plan-list-head .btn{
+  height:34px !important;
+  min-height:34px !important;
+  padding:0 14px !important;
+  border-radius:7px !important;
+}
+
+#page-tasks .task-plan-filters{
+  margin-bottom:8px !important;
+}
+
+#page-tasks .task-filter-pill{
+  height:31px !important;
+  min-height:31px !important;
+  border-radius:7px !important;
+}
+
+#page-tasks .task-plan-item{
+  min-height:56px !important;
+  padding:8px 10px !important;
+}
+
+#page-tasks .task-plan-item-summary{
+  font-size:12px !important;
+  line-height:1.25 !important;
+}
+
+#page-tasks .task-plan-detail-card-v2{
+  padding:10px !important;
+}
+
+#page-tasks .task-plan-editor-head{
+  min-height:38px !important;
+  padding:0 0 7px !important;
+  margin-bottom:7px !important;
+}
+
+#page-tasks .task-plan-head-side{
+  gap:8px !important;
+}
+
+#page-tasks .task-detail-title{
+  font-size:17px !important;
+}
+
+#page-tasks .task-plan-detail-scroll{
+  gap:7px !important;
+  padding-bottom:8px !important;
+}
+
+#page-tasks .task-form-stack.task-plan-editor-form-v2{
+  gap:7px !important;
+}
+
+#page-tasks .task-plan-name-field{
+  display:grid !important;
+  grid-template-columns:90px minmax(0, 1fr) !important;
+  align-items:center !important;
+  gap:8px !important;
+}
+
+#page-tasks .task-plan-name-field .input{
+  height:34px !important;
+  min-height:34px !important;
+}
+
+#page-tasks .task-form-section.task-plan-panel{
+  padding:9px !important;
+}
+
+#page-tasks .task-section-head{
+  margin-bottom:7px !important;
+}
+
+#page-tasks .task-section-head strong{
+  font-size:13px !important;
+}
+
+#page-tasks .task-plan-grid-trigger{
+  grid-template-columns:minmax(0, 1fr) repeat(5, minmax(88px, 0.44fr)) !important;
+  gap:7px !important;
+}
+
+#page-tasks .task-plan-grid-trigger .ac-wide{
+  grid-column:1 / -1 !important;
+}
+
+#page-tasks .rule-condition-row{
+  padding:7px !important;
+}
+
+#page-tasks .rule-condition-row label{
+  font-size:11px !important;
+}
+
+#page-tasks .rule-condition-row .input,
+#page-tasks .rule-condition-row select,
+#page-tasks .rule-condition-row input{
+  height:32px !important;
+  min-height:32px !important;
+  border-radius:7px !important;
+}
+
+#page-tasks .task-condition-preview{
+  margin-top:6px !important;
+  padding:5px 7px !important;
+  font-size:11px !important;
+}
+
+#page-tasks .task-action-bar-v2{
+  padding-top:7px !important;
+  gap:7px !important;
+}
+
+#page-tasks .task-action-bar-v2 .btn{
+  height:35px !important;
+  min-height:35px !important;
+  border-radius:7px !important;
+  font-size:13px !important;
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-strip{
+    gap:5px !important;
+  }
+
+  #page-tasks .task-runtime-metrics{
+    display:grid !important;
+    grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+    gap:5px !important;
+  }
+
+  #page-tasks .task-runtime-metric{
+    justify-content:flex-start !important;
+    overflow:hidden !important;
+  }
+
+  #page-tasks .task-runtime-metric span:not(.task-runtime-dot),
+  #page-tasks .task-runtime-metric strong{
+    display:block !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    width:100% !important;
+  }
+
+  #page-tasks .task-plan-name-field,
+  #page-tasks .task-plan-grid-trigger{
+    grid-template-columns:minmax(0, 1fr) !important;
+  }
+
+  #page-tasks .task-action-bar-v2{
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* 2026-07-11：任务计划模型收束。
+   让页面表达“数据精度 / 取值 / 连续点数”，并把运行条降为状态摘要。 */
+#page-tasks .task-runtime-strip{
+  min-height:48px !important;
+  padding:8px 10px !important;
+  grid-template-columns:minmax(0, 1fr) auto !important;
+  align-items:center !important;
+  gap:10px !important;
+  border-radius:8px !important;
+}
+
+#page-tasks .task-runtime-metrics{
+  min-height:0 !important;
+  display:grid !important;
+  grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+  gap:8px !important;
+}
+
+#page-tasks .task-runtime-metric{
+  min-height:30px !important;
+  padding:0 10px !important;
+  align-content:center !important;
+}
+
+#page-tasks .task-runtime-metric span{
+  font-size:11px !important;
+  line-height:1.1 !important;
+}
+
+#page-tasks .task-runtime-metric strong{
+  font-size:13px !important;
+  line-height:1.1 !important;
+}
+
+#page-tasks .task-runtime-safe-actions{
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:6px !important;
+}
+
+#page-tasks .task-runtime-safe-actions .btn,
+#page-tasks .task-runtime-control summary{
+  width:auto !important;
+  min-width:58px !important;
+  height:30px !important;
+  min-height:30px !important;
+  padding:0 10px !important;
+  border-radius:7px !important;
+  font-size:12px !important;
+}
+
+#page-tasks .task-plan-grid-trigger{
+  grid-template-columns:
+    minmax(86px, 0.75fr)
+    minmax(96px, 0.8fr)
+    minmax(128px, 1fr)
+    minmax(82px, 0.65fr)
+    minmax(90px, 0.7fr)
+    minmax(108px, 0.75fr) !important;
+  gap:8px !important;
+  align-items:end !important;
+}
+
+#page-tasks .task-plan-grid-trigger .ac-wide{
+  grid-column:1 / -1 !important;
+}
+
+#page-tasks .rule-condition-row .task-section-check{
+  min-height:36px !important;
+  padding:0 8px !important;
+  gap:7px !important;
+}
+
+#page-tasks .rule-condition-row .task-section-check span{
+  font-size:12px !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-plan-detail-card-v2{
+  min-height:0 !important;
+}
+
+#page-tasks .task-plan-editor-head{
+  align-items:center !important;
+}
+
+#page-tasks .task-detail-title{
+  max-width:520px !important;
+}
+
+#page-tasks .task-plan-list-card-v2{
+  min-width:0 !important;
+}
+
+#page-tasks .task-plan-item{
+  min-height:54px !important;
+}
+
+#page-tasks .task-plan-item .task-badge-row{
+  flex:0 0 auto !important;
+}
+
+#page-tasks .task-plan-list-foot{
+  margin-top:auto !important;
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-strip{
+    grid-template-columns:minmax(0, 1fr) !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    justify-content:stretch !important;
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions .btn,
+  #page-tasks .task-runtime-control summary{
+    width:100% !important;
+  }
+
+  #page-tasks .task-plan-grid-trigger{
+    grid-template-columns:minmax(0, 1fr) !important;
+  }
+}
+
+/* 2026-07-11：任务计划语义与可读性兜底。
+   最后一层只处理任务计划页，避免旧覆盖层把状态条、条件行和按钮再次挤坏。 */
+#page-tasks .task-runtime-card{
+  padding:0 !important;
+  margin:0 0 8px !important;
+  border-color:var(--accent-line-soft) !important;
+  background:rgba(255,255,255,0.008) !important;
+}
+
+#page-tasks .task-runtime-strip{
+  min-height:40px !important;
+  padding:5px 8px !important;
+  grid-template-columns:minmax(0, 1fr) auto !important;
+  border-radius:8px !important;
+  background:transparent !important;
+}
+
+#page-tasks .task-runtime-metric{
+  min-height:28px !important;
+  padding:0 9px !important;
+  background:transparent !important;
+  border:0 !important;
+  border-right:1px solid var(--panel-line) !important;
+}
+
+#page-tasks .task-runtime-metric:last-child{
+  border-right:0 !important;
+}
+
+#page-tasks .task-runtime-metric strong{
+  font-size:13px !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control,
+#page-tasks .task-runtime-control summary{
+  width:68px !important;
+  min-width:68px !important;
+  height:30px !important;
+  min-height:30px !important;
+}
+
+#page-tasks .task-plan-grid-trigger{
+  grid-template-columns:minmax(116px, 0.9fr) minmax(116px, 0.9fr) minmax(100px, 0.8fr) minmax(102px, 0.8fr) minmax(126px, 0.9fr) !important;
+  gap:8px !important;
+  align-items:end !important;
+}
+
+#page-tasks .rule-condition-row .task-plan-grid-trigger .ac-wide{
+  grid-column:1 / -1 !important;
+}
+
+#page-tasks .rule-condition-row .task-section-check{
+  align-self:end !important;
+  min-height:36px !important;
+  padding:0 10px !important;
+  overflow:visible !important;
+}
+
+#page-tasks .rule-condition-row .task-section-check span{
+  overflow:visible !important;
+  text-overflow:clip !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-plan-item{
+  min-height:52px !important;
+}
+
+#page-tasks .task-plan-item .task-badge{
+  max-width:58px !important;
+}
+
+#page-tasks .task-action-bar-v2 .btn{
+  min-width:0 !important;
+  white-space:nowrap !important;
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-strip{
+    grid-template-columns:minmax(0, 1fr) !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions > .btn,
+  #page-tasks .task-runtime-control,
+  #page-tasks .task-runtime-control summary{
+    width:100% !important;
+    min-width:0 !important;
+  }
+
+  #page-tasks .task-plan-grid-trigger{
+    grid-template-columns:minmax(0, 1fr) !important;
+  }
+
+  #page-tasks .rule-condition-row .task-section-check span{
+    white-space:normal !important;
+  }
+}
+
+/* 2026-07-11：任务计划多条件编辑器。 */
+#page-tasks .rule-condition-list{
+  display:grid !important;
+  grid-template-columns:minmax(0, 1fr) !important;
+  gap:8px !important;
+}
+
+#page-tasks .rule-condition-row{
+  display:grid !important;
+  gap:8px !important;
+  padding:10px !important;
+  border:1px solid var(--accent-line-soft) !important;
+  border-radius:8px !important;
+  background:rgba(255,255,255,0.025) !important;
+}
+
+#page-tasks .rule-condition-head{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:8px !important;
+}
+
+#page-tasks .rule-condition-head strong{
+  font-size:13px !important;
+  line-height:1.2 !important;
+}
+
+#page-tasks .rule-condition-remove{
+  width:auto !important;
+  height:28px !important;
+  min-height:28px !important;
+  padding:0 10px !important;
+  font-size:11px !important;
+  border-radius:7px !important;
+}
+
+#page-tasks .rule-add-condition{
+  width:120px !important;
+  height:32px !important;
+  min-height:32px !important;
+  margin-top:8px !important;
+  border-radius:7px !important;
+}
+
+#page-tasks .rule-condition-window[hidden]{
+  display:none !important;
+}
+
+#page-tasks .rule-condition-row .task-plan-grid-trigger{
+  grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
+  gap:8px !important;
+}
+
+#page-tasks .rule-condition-row .task-plan-grid-trigger .ac-wide{
+  grid-column:1 / -1 !important;
+}
+
+#page-tasks .rule-condition-row label{
+  min-width:0 !important;
+}
+
+#page-tasks .rule-condition-row .input,
+#page-tasks .rule-condition-row select,
+#page-tasks .rule-condition-row input{
+  min-width:0 !important;
+}
+
+#page-tasks .rule-condition-row .task-inline-duration{
+  grid-template-columns:54px minmax(78px, 1fr) !important;
+  gap:6px !important;
+}
+
+#page-tasks .rule-condition-row .task-inline-duration input{
+  text-align:center !important;
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-plan-grid-trigger{
+    grid-template-columns:minmax(0, 1fr) !important;
+  }
+
+  #page-tasks .rule-add-condition{
+    width:100% !important;
+  }
+}
+
+/* 2026-07-11：任务计划页最终生效层。
+   放在文件末尾，避免前面历史覆盖互相抢样式。 */
+#page-tasks .task-runtime-card{
+  padding:5px 8px !important;
+}
+
+#page-tasks .task-runtime-strip{
+  min-height:42px !important;
+  align-items:center !important;
+  gap:8px !important;
+}
+
+#page-tasks .task-runtime-metrics{
+  align-items:center !important;
+  gap:10px !important;
+}
+
+#page-tasks .task-runtime-metric{
+  min-height:30px !important;
+  gap:7px !important;
+  padding:0 12px 0 0 !important;
+}
+
+#page-tasks .task-runtime-dot{
+  width:8px !important;
+  height:8px !important;
+  box-shadow:none !important;
+}
+
+#page-tasks .task-runtime-metric span{
+  font-size:10px !important;
+  line-height:1.05 !important;
+}
+
+#page-tasks .task-runtime-metric strong{
+  margin-top:1px !important;
+  font-size:14px !important;
+  line-height:1.05 !important;
+}
+
+#page-tasks .task-runtime-safe-actions{
+  width:auto !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:6px !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control summary{
+  width:72px !important;
+  height:29px !important;
+  min-height:29px !important;
+  padding:0 8px !important;
+  border-radius:7px !important;
+  font-size:11px !important;
+}
+
+#page-tasks .task-runtime-control{
+  position:relative !important;
+  width:72px !important;
+}
+
+#page-tasks .task-runtime-control[open] .task-runtime-actions{
+  position:absolute !important;
+  top:34px !important;
+  right:0 !important;
+  z-index:80 !important;
+  width:176px !important;
+  padding:8px !important;
+  display:grid !important;
+  grid-template-columns:minmax(0, 1fr) !important;
+  gap:6px !important;
+  border:1px solid var(--accent-line-soft) !important;
+  border-radius:8px !important;
+  background:rgba(3,8,12,0.98) !important;
+  box-shadow:0 14px 28px rgba(0,0,0,0.45) !important;
+}
+
+#page-tasks .task-runtime-actions .btn{
+  width:100% !important;
+  height:32px !important;
+  min-height:32px !important;
+  padding:0 8px !important;
+  border-radius:7px !important;
+  font-size:11px !important;
+}
+
+#page-tasks .task-plan-banner{
+  display:none !important;
+}
+
+#page-tasks .task-plan-item{
+  grid-template-columns:minmax(0, 1fr) !important;
+  min-height:72px !important;
+  padding:10px 12px !important;
+}
+
+#page-tasks .task-plan-item-icon,
+#page-tasks .task-plan-chevron{
+  display:none !important;
+}
+
+#page-tasks .task-plan-item-summary{
+  -webkit-line-clamp:1 !important;
+}
+
+#page-tasks .task-plan-item-subline{
+  justify-content:flex-start !important;
+}
+
+#page-tasks .task-plan-item-subline strong{
+  min-width:0 !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-plan-detail-scroll{
+  gap:8px !important;
+}
+
+#page-tasks .task-section-check{
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  gap:8px !important;
+  min-height:34px !important;
+  padding:0 10px !important;
+  line-height:1.15 !important;
+  overflow:hidden !important;
+}
+
+#page-tasks .task-section-check input[type="checkbox"]{
+  position:static !important;
+  opacity:1 !important;
+  flex:0 0 16px !important;
+  width:16px !important;
+  height:16px !important;
+  margin:0 !important;
+}
+
+#page-tasks .task-section-check span{
+  min-width:0 !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-action-bar-v2{
+  gap:8px !important;
+}
+
+#page-tasks .task-action-bar-v2 .btn{
+  height:38px !important;
+  min-height:38px !important;
+}
+
+@media (min-width: 880px){
+  #page-tasks .task-runtime-strip{
+    grid-template-columns:minmax(0, 1fr) auto !important;
+  }
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-strip{
+    min-height:auto !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    width:100% !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions > .btn,
+  #page-tasks .task-runtime-control,
+  #page-tasks .task-runtime-control summary{
+    width:100% !important;
+  }
+
+  #page-tasks .task-runtime-control[open] .task-runtime-actions{
+    position:static !important;
+    width:100% !important;
+    margin-top:5px !important;
+    box-shadow:none !important;
+  }
+
+  #page-tasks .task-action-bar-v2{
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* 2026-07-11：任务计划现场屏精简。
+   只处理任务计划页：状态条轻量化、列表减噪、复选框对齐。 */
+#page-tasks .task-runtime-card{
+  padding:5px 8px !important;
+}
+
+#page-tasks .task-runtime-strip{
+  min-height:42px;
+  gap:8px !important;
+  align-items:center;
+}
+
+#page-tasks .task-runtime-metrics{
+  align-items:center;
+  gap:10px;
+}
+
+#page-tasks .task-runtime-metric{
+  min-height:30px !important;
+  gap:7px !important;
+  padding:0 12px 0 0 !important;
+}
+
+#page-tasks .task-runtime-dot{
+  width:8px !important;
+  height:8px !important;
+  box-shadow:none !important;
+}
+
+#page-tasks .task-runtime-metric span{
+  font-size:10px !important;
+  line-height:1.05;
+}
+
+#page-tasks .task-runtime-metric strong{
+  margin-top:1px;
+  font-size:14px !important;
+  line-height:1.05;
+}
+
+#page-tasks .task-runtime-safe-actions{
+  width:auto !important;
+  display:flex !important;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control summary{
+  width:72px;
+  height:29px !important;
+  min-height:29px !important;
+  padding:0 8px !important;
+  border-radius:7px !important;
+  font-size:11px !important;
+}
+
+#page-tasks .task-runtime-control{
+  position:relative;
+  width:72px;
+}
+
+#page-tasks .task-runtime-control[open] .task-runtime-actions{
+  position:absolute;
+  top:34px;
+  right:0;
+  z-index:80;
+  width:176px !important;
+  padding:8px !important;
+  display:grid;
+  gap:6px;
+  border:1px solid var(--accent-line-soft);
+  border-radius:8px;
+  background:rgba(3,8,12,0.98);
+  box-shadow:0 14px 28px rgba(0,0,0,0.45);
+}
+
+#page-tasks .task-runtime-actions .btn{
+  width:100%;
+  height:32px !important;
+  min-height:32px !important;
+  padding:0 8px !important;
+  border-radius:7px !important;
+  font-size:11px !important;
+}
+
+#page-tasks .task-plan-banner{
+  display:none !important;
+}
+
+#page-tasks .task-plan-item{
+  grid-template-columns:minmax(0, 1fr) !important;
+  min-height:72px;
+  padding:10px 12px !important;
+}
+
+#page-tasks .task-plan-item-icon,
+#page-tasks .task-plan-chevron{
+  display:none !important;
+}
+
+#page-tasks .task-plan-item-summary{
+  -webkit-line-clamp:1 !important;
+}
+
+#page-tasks .task-plan-item-subline{
+  justify-content:flex-start !important;
+}
+
+#page-tasks .task-plan-item-subline strong{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#page-tasks .task-plan-detail-scroll{
+  gap:8px !important;
+}
+
+#page-tasks .task-section-check{
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  gap:8px !important;
+  min-height:34px !important;
+  padding:0 10px !important;
+  line-height:1.15;
+  overflow:hidden;
+}
+
+#page-tasks .task-section-check input[type="checkbox"]{
+  position:static !important;
+  opacity:1 !important;
+  flex:0 0 16px !important;
+  width:16px !important;
+  height:16px !important;
+  margin:0 !important;
+}
+
+#page-tasks .task-section-check span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#page-tasks .task-action-bar-v2{
+  gap:8px !important;
+}
+
+#page-tasks .task-action-bar-v2 .btn{
+  height:38px !important;
+  min-height:38px !important;
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-strip{
+    min-height:auto;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    width:100% !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions > .btn,
+  #page-tasks .task-runtime-control{
+    width:100%;
+  }
+
+  #page-tasks .task-runtime-control summary{
+    width:100%;
+  }
+
+  #page-tasks .task-runtime-control[open] .task-runtime-actions{
+    position:static;
+    width:100% !important;
+    margin-top:5px;
+    box-shadow:none;
+  }
+
+  #page-tasks .task-action-bar-v2{
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* 2026-07-11：顶部设备标识支持真实 Logo 图片 + 显示文字。 */
+.top-meta .logo-slot{
+  display:flex !important;
+  align-items:center;
+  gap:7px;
+  color:var(--accent);
+  font-weight:900;
+}
+
+.top-meta .logo-slot img{
+  display:block;
+  width:24px;
+  height:24px;
+  object-fit:contain;
+  flex:0 0 auto;
+}
+
+.top-meta .logo-slot span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+@media (max-width: 879px){
+  .top-meta .logo-slot{
+    gap:5px;
+  }
+
+  .top-meta .logo-slot img{
+    width:22px;
+    height:22px;
+  }
+}
+
+/* 2026-07-10：任务计划横屏状态条收紧。
+   这是运行概览，不是主操作台；PC/10寸横屏下不应占据过多高度。 */
+@media (min-width: 880px){
+  #page-tasks .task-runtime-card{
+    padding:5px 8px;
+  }
+
+  #page-tasks .task-runtime-strip{
+    grid-template-columns:minmax(0, 1fr) 132px;
+    gap:8px;
+  }
+
+  #page-tasks .task-runtime-metric{
+    min-height:30px;
+    gap:8px;
+    padding:0 10px 0 0;
+  }
+
+  #page-tasks .task-runtime-dot{
+    width:9px;
+    height:9px;
+    box-shadow:0 0 0 3px rgba(255,255,255,0.04);
+  }
+
+  #page-tasks .task-runtime-metric span{
+    font-size:11px;
+    line-height:1.05;
+  }
+
+  #page-tasks .task-runtime-metric strong{
+    margin-top:1px;
+    font-size:14px;
+    line-height:1.05;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    width:132px;
+    gap:4px;
+  }
+
+  #page-tasks .task-runtime-control{
+    border-radius:7px;
+  }
+
+  #page-tasks .task-runtime-control summary{
+    height:27px;
+    font-size:11px;
+  }
+
+  #page-tasks .task-runtime-safe-actions .btn,
+  #page-tasks .task-runtime-actions .btn{
+    height:27px;
+    min-height:27px;
+    padding:0 7px;
+    font-size:11px;
+    border-radius:7px;
+  }
+
+  #page-tasks .task-runtime-actions{
+    gap:5px;
+    padding:0 6px 6px;
+  }
+}
+
+/* 2026-07-10：顶部全局工具独立成行。
+   Logo 是设备标识，不再和路由按钮挤在同一行；手机端路由独占一行横滑。 */
+.top-meta{
+  display:flex !important;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:0 8px;
+  min-height:32px;
+  flex:0 0 auto;
+}
+
+.top-meta .logo-slot{
+  width:auto !important;
+  min-width:0 !important;
+  height:30px !important;
+  flex:0 1 auto !important;
+  border:0 !important;
+  background:transparent !important;
+  padding:0 2px !important;
+  justify-content:flex-start;
+  color:var(--accent);
+}
+
+.top-meta .top-right{
+  width:auto !important;
+  min-width:0 !important;
+  height:32px;
+  display:flex !important;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  margin-left:auto;
+  overflow:visible;
+}
+
+.top-tabs{
+  display:flex !important;
+  grid-template-columns:none !important;
+  align-items:center;
+  width:100%;
+  height:auto !important;
+  min-height:36px;
+  max-height:none !important;
+  padding:0 8px !important;
+  overflow:hidden;
+}
+
+.top-left{
+  width:100%;
+  height:auto !important;
+  min-width:0;
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  align-items:center;
+  gap:6px;
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+
+.top-left::-webkit-scrollbar{
+  display:none;
+}
+
+@media (max-width: 879px){
+  .top-meta{
+    min-height:31px;
+    padding:0 !important;
+  }
+
+  .top-meta .logo-slot{
+    height:30px !important;
+    max-width:52%;
+    font-size:12px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .top-meta .top-right{
+    height:30px;
+    gap:5px;
+  }
+
+  .top-meta .icon-btn{
+    width:32px;
+    height:30px;
+    min-width:32px;
+    flex:0 0 32px;
+    padding:0;
+    border-radius:8px;
+  }
+
+  .top-meta #btnTheme{
+    width:34px;
+    min-width:34px;
+    max-width:34px;
+    padding:0;
+    font-size:11px;
+  }
+
+  .top-tabs{
+    min-height:34px;
+    padding:0 !important;
+  }
+
+  .top-left{
+    gap:5px;
+  }
+
+  .top-left .tab{
+    height:32px;
+    min-width:max-content;
+    flex:0 0 auto;
+    padding:0 8px;
+    font-size:13px;
+    border-radius:8px;
+  }
+
+  html[lang="en-US"] .top-left .tab{
+    padding:0 7px;
+    font-size:11px;
+  }
+}
+
+/* 2026-07-11：任务计划运行条真正末端覆盖。
+   放在全文件末尾，覆盖前面的历史运行条按钮宽度，避免内部横向溢出。 */
+#page-tasks .task-runtime-strip{
+  grid-template-columns:minmax(0, 1fr) 126px !important;
+  max-width:100% !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+}
+
+#page-tasks .task-runtime-safe-actions{
+  width:126px !important;
+  max-width:126px !important;
+  min-width:0 !important;
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  justify-content:flex-end !important;
+  gap:4px !important;
+  overflow:hidden !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control,
+#page-tasks .task-runtime-control summary{
+  width:61px !important;
+  min-width:0 !important;
+  max-width:61px !important;
+  box-sizing:border-box !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control summary{
+  height:28px !important;
+  min-height:28px !important;
+  padding:0 5px !important;
+  font-size:11px !important;
+  line-height:28px !important;
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-strip{
+    grid-template-columns:minmax(0, 1fr) !important;
+    overflow:visible !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    width:100% !important;
+    max-width:100% !important;
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    gap:5px !important;
+    overflow:visible !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions > .btn,
+  #page-tasks .task-runtime-control,
+  #page-tasks .task-runtime-control summary{
+    width:100% !important;
+    max-width:100% !important;
+  }
+}
+
+/* 2026-07-11：任务计划页最终修正。
+   末端覆盖前面历史样式，目标是清楚、紧凑、不溢出。 */
+#page-tasks .task-page-v2{
+  gap:6px !important;
+}
+
+#page-tasks .task-runtime-card{
+  margin:0 0 3px !important;
+  padding:0 !important;
+  border:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+#page-tasks .task-runtime-strip{
+  display:grid !important;
+  grid-template-columns:minmax(0, 1fr) auto !important;
+  align-items:center !important;
+  gap:8px !important;
+  min-height:30px !important;
+  padding:0 2px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  overflow:visible !important;
+}
+
+#page-tasks .task-runtime-metrics{
+  display:flex !important;
+  align-items:center !important;
+  gap:10px !important;
+  min-width:0 !important;
+  overflow:hidden !important;
+}
+
+#page-tasks .task-runtime-metric{
+  display:flex !important;
+  align-items:center !important;
+  gap:5px !important;
+  min-height:26px !important;
+  min-width:0 !important;
+  padding:0 10px 0 0 !important;
+  border-right:1px solid var(--panel-line) !important;
+  background:transparent !important;
+}
+
+#page-tasks .task-runtime-metric:last-child{
+  border-right:0 !important;
+}
+
+#page-tasks .task-runtime-dot{
+  width:7px !important;
+  height:7px !important;
+  flex:0 0 7px !important;
+  box-shadow:none !important;
+}
+
+#page-tasks .task-runtime-metric > div{
+  display:flex !important;
+  align-items:baseline !important;
+  gap:4px !important;
+  min-width:0 !important;
+}
+
+#page-tasks .task-runtime-metric span:not(.task-runtime-dot){
+  display:inline !important;
+  margin:0 !important;
+  font-size:11px !important;
+  line-height:1 !important;
+  color:var(--muted) !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-runtime-metric strong{
+  display:inline !important;
+  margin:0 !important;
+  font-size:12px !important;
+  line-height:1 !important;
+  color:var(--text) !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-runtime-safe-actions{
+  display:flex !important;
+  flex:0 0 auto !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:5px !important;
+  width:auto !important;
+  min-width:0 !important;
+  overflow:visible !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control,
+#page-tasks .task-runtime-control summary{
+  width:auto !important;
+  min-width:56px !important;
+  max-width:88px !important;
+  height:27px !important;
+  min-height:27px !important;
+  padding:0 8px !important;
+  border-radius:7px !important;
+  font-size:11px !important;
+  line-height:1 !important;
+}
+
+#page-tasks .task-runtime-control{
+  position:relative !important;
+}
+
+#page-tasks .task-runtime-control[open] .task-runtime-actions{
+  position:absolute !important;
+  top:30px !important;
+  right:0 !important;
+  z-index:80 !important;
+  display:grid !important;
+  grid-template-columns:minmax(0, 1fr) !important;
+  gap:6px !important;
+  width:168px !important;
+  padding:8px !important;
+  border:1px solid var(--accent-line-soft) !important;
+  border-radius:8px !important;
+  background:rgba(3,8,12,0.98) !important;
+  box-shadow:0 14px 28px rgba(0,0,0,0.45) !important;
+}
+
+#page-tasks .task-subtabs{
+  margin:0 0 6px !important;
+}
+
+#page-tasks .task-plan-list-card-v2{
+  padding:10px !important;
+}
+
+#page-tasks .task-plan-list-head{
+  margin-bottom:7px !important;
+}
+
+#page-tasks .task-plan-list-head h3{
+  font-size:17px !important;
+}
+
+#page-tasks .task-plan-list-head .btn{
+  height:34px !important;
+  min-height:34px !important;
+  padding:0 14px !important;
+  border-radius:7px !important;
+}
+
+#page-tasks .task-plan-filters{
+  margin-bottom:8px !important;
+}
+
+#page-tasks .task-plan-item{
+  min-height:56px !important;
+  padding:8px 10px !important;
+}
+
+#page-tasks .task-plan-item-summary{
+  display:block !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  font-size:12px !important;
+  line-height:1.25 !important;
+}
+
+#page-tasks .task-plan-detail-card-v2{
+  padding:10px !important;
+  border-radius:8px !important;
+  overflow:hidden !important;
+}
+
+#page-tasks .task-plan-editor-head{
+  min-height:38px !important;
+  padding:0 0 7px !important;
+  margin-bottom:7px !important;
+  border-bottom:1px solid var(--panel-line) !important;
+}
+
+#page-tasks .task-detail-title{
+  font-size:17px !important;
+  line-height:1.15 !important;
+}
+
+#page-tasks .task-inline-toggle{
+  min-height:30px !important;
+  gap:8px !important;
+  padding:0 !important;
+}
+
+#page-tasks .task-inline-toggle > span:first-child{
+  font-size:12px !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-plan-detail-scroll{
+  gap:8px !important;
+  padding-right:4px !important;
+  padding-bottom:10px !important;
+  overflow-x:hidden !important;
+}
+
+#page-tasks .task-form-section.task-plan-panel{
+  padding:10px !important;
+  border-radius:8px !important;
+}
+
+#page-tasks .task-section-head{
+  margin-bottom:8px !important;
+  gap:6px !important;
+}
+
+#page-tasks .task-section-head strong{
+  font-size:14px !important;
+  line-height:1.15 !important;
+}
+
+#page-tasks .rule-condition-row{
+  padding:8px !important;
+  gap:7px !important;
+  border-radius:8px !important;
+}
+
+#page-tasks .rule-condition-head strong{
+  font-size:12px !important;
+  color:var(--muted) !important;
+}
+
+#page-tasks .task-plan-grid-trigger{
+  grid-template-columns:minmax(0, 1fr) repeat(5, minmax(82px, 0.56fr)) !important;
+  gap:8px !important;
+  align-items:end !important;
+}
+
+#page-tasks .task-plan-grid-trigger .ac-wide{
+  grid-column:1 / -1 !important;
+}
+
+#page-tasks .rule-condition-row label{
+  min-width:0 !important;
+  font-size:12px !important;
+}
+
+#page-tasks .rule-condition-row .input,
+#page-tasks .rule-condition-row select,
+#page-tasks .rule-condition-row input{
+  min-width:0 !important;
+  width:100% !important;
+  height:32px !important;
+  min-height:32px !important;
+  border-radius:7px !important;
+}
+
+#page-tasks .task-condition-preview{
+  margin-top:6px !important;
+  padding:6px 8px !important;
+  font-size:12px !important;
+  line-height:1.2 !important;
+}
+
+#page-tasks .task-action-bar-v2{
+  gap:8px !important;
+  padding-top:8px !important;
+  border-top:1px solid var(--panel-line) !important;
+  background:var(--panel) !important;
+}
+
+#page-tasks .task-action-bar-v2 .btn{
+  height:38px !important;
+  min-height:38px !important;
+  border-radius:8px !important;
+  font-size:14px !important;
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-strip{
+    grid-template-columns:minmax(0, 1fr) !important;
+    gap:5px !important;
+  }
+
+  #page-tasks .task-runtime-metrics{
+    display:grid !important;
+    grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+    gap:5px !important;
+  }
+
+  #page-tasks .task-runtime-metric{
+    padding:0 6px !important;
+    overflow:hidden !important;
+  }
+
+  #page-tasks .task-runtime-metric > div{
+    display:block !important;
+    overflow:hidden !important;
+  }
+
+  #page-tasks .task-runtime-metric span:not(.task-runtime-dot),
+  #page-tasks .task-runtime-metric strong{
+    display:block !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    width:100% !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions > .btn,
+  #page-tasks .task-runtime-control,
+  #page-tasks .task-runtime-control summary{
+    width:100% !important;
+    max-width:none !important;
+  }
+
+  #page-tasks .task-runtime-control[open] .task-runtime-actions{
+    position:static !important;
+    width:100% !important;
+    margin-top:5px !important;
+    box-shadow:none !important;
+  }
+
+  #page-tasks .task-plan-grid-trigger{
+    grid-template-columns:minmax(0, 1fr) !important;
+  }
+
+  #page-tasks .task-action-bar-v2{
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* 2026-07-11：任务计划收束为“状态条 + 条件语句编辑器”。
+   目标是减少工程味字段、降低顶部占高，并让多粒度多条件规则更可读。 */
+#page-tasks .task-runtime-card{
+  padding:0 !important;
+  margin:0 0 8px !important;
+  border:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+#page-tasks .task-runtime-strip{
+  display:grid !important;
+  grid-template-columns:minmax(0, 1fr) auto !important;
+  align-items:center !important;
+  gap:8px !important;
+  min-height:42px !important;
+  padding:6px 8px !important;
+  border:1px solid var(--panel-line) !important;
+  border-radius:8px !important;
+  background:var(--panel) !important;
+}
+
+#page-tasks .task-runtime-metrics{
+  display:grid !important;
+  grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+  gap:6px !important;
+  min-width:0 !important;
+}
+
+#page-tasks .task-runtime-metric{
+  min-width:0 !important;
+  min-height:30px !important;
+  padding:4px 8px !important;
+  border:1px solid var(--panel-line) !important;
+  border-radius:7px !important;
+  background:var(--surface) !important;
+}
+
+#page-tasks .task-runtime-metric > div{
+  min-width:0 !important;
+}
+
+#page-tasks .task-runtime-metric span:not(.task-runtime-dot){
+  display:block !important;
+  max-width:100% !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  font-size:11px !important;
+  line-height:1.1 !important;
+  color:var(--muted) !important;
+}
+
+#page-tasks .task-runtime-metric strong{
+  display:block !important;
+  max-width:100% !important;
+  margin-top:2px !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  font-size:13px !important;
+  line-height:1.1 !important;
+}
+
+#page-tasks .task-runtime-safe-actions{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:6px !important;
+  width:auto !important;
+  min-width:0 !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control summary{
+  height:30px !important;
+  min-height:30px !important;
+  padding:0 12px !important;
+  border-radius:7px !important;
+  font-size:12px !important;
+  line-height:30px !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-runtime-control{
+  position:relative !important;
+  width:auto !important;
+  min-width:0 !important;
+}
+
+#page-tasks .task-runtime-control[open] .task-runtime-actions{
+  right:0 !important;
+  width:240px !important;
+  padding:6px !important;
+  gap:6px !important;
+  border-radius:8px !important;
+}
+
+#page-tasks .task-runtime-actions .btn{
+  height:32px !important;
+  min-height:32px !important;
+  padding:0 10px !important;
+  border-radius:7px !important;
+  font-size:12px !important;
+  white-space:normal !important;
+}
+
+#page-tasks .task-workbench-v2{
+  gap:8px !important;
+}
+
+#page-tasks .task-plan-list-card-v2,
+#page-tasks .task-plan-detail-card-v2{
+  border-radius:8px !important;
+}
+
+#page-tasks .task-plan-list-head h3{
+  font-size:16px !important;
+}
+
+#page-tasks .task-plan-item{
+  min-height:56px !important;
+  padding:9px 10px !important;
+  border-radius:8px !important;
+}
+
+#page-tasks .task-plan-item-summary{
+  display:block !important;
+  max-width:100% !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-plan-editor-head{
+  min-height:48px !important;
+  padding:10px 12px !important;
+}
+
+#page-tasks .task-editor-kicker{
+  font-size:11px !important;
+  color:var(--muted) !important;
+}
+
+#page-tasks .task-detail-title{
+  font-size:18px !important;
+  line-height:1.15 !important;
+}
+
+#page-tasks .task-inline-toggle{
+  min-height:30px !important;
+  padding:0 0 0 8px !important;
+  gap:8px !important;
+}
+
+#page-tasks .task-form-stack.task-plan-editor-form-v2{
+  gap:8px !important;
+}
+
+#page-tasks .task-form-section.task-plan-panel{
+  padding:10px !important;
+  border-radius:8px !important;
+}
+
+#page-tasks .task-section-head{
+  margin-bottom:8px !important;
+}
+
+#page-tasks .task-section-head strong{
+  font-size:14px !important;
+}
+
+#page-tasks .rule-condition-list{
+  gap:8px !important;
+}
+
+#page-tasks .rule-condition-row{
+  padding:9px !important;
+  border-radius:8px !important;
+  background:var(--surface) !important;
+  border:1px solid var(--panel-line) !important;
+}
+
+#page-tasks .rule-condition-head{
+  min-height:26px !important;
+  margin-bottom:7px !important;
+}
+
+#page-tasks .rule-condition-head strong{
+  font-size:12px !important;
+  color:var(--muted) !important;
+}
+
+#page-tasks .task-plan-grid-trigger{
+  display:grid !important;
+  grid-template-columns:minmax(220px, 1.8fr) repeat(3, minmax(118px, 1fr)) minmax(102px, .8fr) minmax(112px, .9fr) minmax(118px, .9fr) !important;
+  gap:8px !important;
+  align-items:end !important;
+}
+
+#page-tasks .task-plan-grid-trigger .ac-wide{
+  grid-column:auto !important;
+}
+
+#page-tasks .rule-condition-row label{
+  min-width:0 !important;
+  font-size:11px !important;
+  line-height:1.2 !important;
+  color:var(--muted) !important;
+}
+
+#page-tasks .rule-condition-row .input,
+#page-tasks .rule-condition-row select,
+#page-tasks .rule-condition-row input{
+  width:100% !important;
+  min-width:0 !important;
+  height:34px !important;
+  min-height:34px !important;
+  border-radius:7px !important;
+}
+
+#page-tasks .rule-condition-row .task-section-check{
+  min-height:34px !important;
+  height:34px !important;
+  padding:0 8px !important;
+  align-self:end !important;
+  color:var(--text) !important;
+}
+
+#page-tasks .rule-condition-row .task-section-check span{
+  font-size:12px !important;
+}
+
+#page-tasks .task-condition-preview{
+  margin-top:7px !important;
+  padding:6px 8px !important;
+  border:1px solid var(--panel-line) !important;
+  border-radius:7px !important;
+  color:var(--muted) !important;
+  background:var(--panel) !important;
+  font-size:12px !important;
+  line-height:1.35 !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .rule-add-condition{
+  width:auto !important;
+  min-width:112px !important;
+  height:34px !important;
+  min-height:34px !important;
+  border-radius:7px !important;
+  font-size:13px !important;
+}
+
+#page-tasks .task-action-bar-v2{
+  grid-template-columns:1.2fr 1fr 1fr .9fr !important;
+  gap:8px !important;
+  padding:8px 12px 10px !important;
+}
+
+#page-tasks .task-action-bar-v2 .btn{
+  height:36px !important;
+  min-height:36px !important;
+  border-radius:8px !important;
+  font-size:13px !important;
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-strip{
+    grid-template-columns:minmax(0, 1fr) !important;
+    gap:6px !important;
+    padding:6px !important;
+  }
+
+  #page-tasks .task-runtime-metrics{
+    grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+    gap:5px !important;
+  }
+
+  #page-tasks .task-runtime-metric{
+    padding:4px 5px !important;
+  }
+
+  #page-tasks .task-runtime-metric span:not(.task-runtime-dot){
+    font-size:10px !important;
+  }
+
+  #page-tasks .task-runtime-metric strong{
+    font-size:11px !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    width:100% !important;
+  }
+
+  #page-tasks .task-runtime-control[open]{
+    grid-column:1 / -1 !important;
+  }
+
+  #page-tasks .task-runtime-control[open] .task-runtime-actions{
+    position:static !important;
+    width:100% !important;
+    margin-top:5px !important;
+  }
+
+  #page-tasks .task-plan-grid-trigger{
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #page-tasks .task-plan-grid-trigger .ac-wide,
+  #page-tasks .rule-condition-row .task-section-check{
+    grid-column:1 / -1 !important;
+  }
+
+  #page-tasks .task-condition-preview{
+    white-space:normal !important;
+  }
+
+  #page-tasks .task-action-bar-v2{
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    padding:8px !important;
+  }
+}
+
+/* 2026-07-11：任务计划手机条件行最终修正。
+   手机端保留三项核心输入同排，保护开关独占一行，避免“过期不触发”被挤成省略号。 */
+@media (max-width: 879px){
+  #page-tasks .rule-condition-row .task-plan-grid-trigger{
+    grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+    gap:7px !important;
+  }
+
+  #page-tasks .rule-condition-row .task-plan-grid-trigger .ac-wide{
+    grid-column:1 / -1 !important;
+  }
+
+  #page-tasks .rule-condition-row .task-section-check{
+    grid-column:1 / -1 !important;
+    width:100% !important;
+  }
+
+  #page-tasks .rule-condition-row .task-section-check span{
+    overflow:visible !important;
+    text-overflow:clip !important;
+    white-space:nowrap !important;
+  }
+}
+
+/* 2026-07-11：任务计划最终收束。
+   只修任务计划页：状态条降权、条件表单清晰化、避免文字挤压。 */
+#page-tasks .task-runtime-card{
+  padding:0 !important;
+  margin-bottom:8px !important;
+  background:transparent !important;
+  border-color:transparent !important;
+  box-shadow:none !important;
+}
+
+#page-tasks .task-runtime-strip{
+  min-height:34px !important;
+  padding:0 !important;
+  gap:8px !important;
+  background:transparent !important;
+  border-radius:0 !important;
+}
+
+#page-tasks .task-runtime-metrics{
+  gap:6px !important;
+}
+
+#page-tasks .task-runtime-metric{
+  min-height:32px !important;
+  padding:4px 8px !important;
+  border:1px solid var(--accent-line-soft) !important;
+  border-radius:7px !important;
+  background:rgba(255,255,255,0.018) !important;
+}
+
+#page-tasks .task-runtime-metric strong{
+  color:#f4f8fb !important;
+  font-size:13px !important;
+}
+
+#page-tasks .task-runtime-dot.ok,
+#page-tasks .task-runtime-dot.neutral{
+  background:var(--accent) !important;
+}
+
+#page-tasks .task-runtime-dot.warn{
+  background:#f7d16b !important;
+}
+
+#page-tasks .task-runtime-safe-actions{
+  gap:5px !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control summary{
+  width:64px !important;
+  height:32px !important;
+  min-height:32px !important;
+  border-radius:7px !important;
+  background:rgba(255,255,255,0.018) !important;
+  border-color:var(--accent-line-soft) !important;
+}
+
+#page-tasks .task-runtime-control{
+  width:64px !important;
+}
+
+#page-tasks .task-runtime-control[open] .task-runtime-actions{
+  width:176px !important;
+  background:#05080b !important;
+}
+
+#page-tasks .task-subtabs{
+  gap:6px !important;
+  margin-bottom:8px !important;
+}
+
+#page-tasks .task-subtabs .subtab,
+#page-tasks .task-subtabs .ac-tab-btn{
+  height:34px !important;
+  border-radius:7px !important;
+  padding:0 16px !important;
+}
+
+#page-tasks .task-plan-list-card-v2,
+#page-tasks .task-plan-detail-card-v2{
+  background:rgba(255,255,255,0.012) !important;
+}
+
+#page-tasks .task-plan-list-card-v2{
+  padding:10px !important;
+}
+
+#page-tasks .task-plan-list-head h3{
+  font-size:17px !important;
+}
+
+#page-tasks .task-plan-item{
+  min-height:56px !important;
+  padding:8px 10px !important;
+}
+
+#page-tasks .task-plan-item-summary{
+  font-size:12px !important;
+}
+
+#page-tasks .task-plan-editor-head{
+  min-height:38px !important;
+  padding-bottom:7px !important;
+  margin-bottom:7px !important;
+}
+
+#page-tasks .task-detail-title{
+  font-size:17px !important;
+}
+
+#page-tasks .task-plan-grid-trigger{
+  grid-template-columns:minmax(180px, 1.6fr) minmax(108px, 0.8fr) minmax(108px, 0.8fr) minmax(96px, 0.7fr) minmax(106px, 0.72fr) !important;
+  gap:7px !important;
+}
+
+#page-tasks .rule-condition-row{
+  padding:7px !important;
+  background:rgba(255,255,255,0.01) !important;
+}
+
+#page-tasks .rule-condition-head{
+  min-height:22px !important;
+}
+
+#page-tasks .rule-condition-head strong{
+  color:var(--muted) !important;
+  font-size:12px !important;
+}
+
+#page-tasks .task-section-check{
+  padding:0 8px !important;
+  gap:6px !important;
+}
+
+#page-tasks .task-section-check span{
+  white-space:normal !important;
+  line-height:1.15 !important;
+}
+
+#page-tasks .task-action-bar-v2{
+  background:transparent !important;
+}
+
+@media (min-width: 880px){
+  #page-tasks .task-runtime-strip{
+    grid-template-columns:minmax(0, 1fr) 134px !important;
+  }
+
+  #page-tasks .task-plan-grid-trigger .ac-wide{
+    grid-column:1 / 3 !important;
+  }
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-metrics{
+    grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions > .btn,
+  #page-tasks .task-runtime-control,
+  #page-tasks .task-runtime-control summary{
+    width:100% !important;
+  }
+
+  #page-tasks .task-plan-grid-trigger,
+  #page-tasks .task-plan-grid-trigger .ac-wide{
+    grid-template-columns:minmax(0, 1fr) !important;
+    grid-column:auto !important;
+  }
+}
+
+/* 2026-07-11：任务计划产品化收束层。
+   目标：现场人员先看计划、再看条件、最后执行；状态栏只做辅助信息。 */
+#page-tasks .task-runtime-card{
+  padding:4px 8px !important;
+  margin-bottom:8px !important;
+  border-radius:8px !important;
+}
+
+#page-tasks .task-runtime-strip{
+  min-height:38px !important;
+  padding:4px 6px !important;
+  display:grid !important;
+  grid-template-columns:minmax(0, 1fr) auto !important;
+  align-items:center !important;
+  gap:8px !important;
+  background:rgba(255,255,255,0.012) !important;
+  border-radius:7px !important;
+}
+
+#page-tasks .task-runtime-metrics{
+  display:grid !important;
+  grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+  gap:0 !important;
+  min-width:0 !important;
+}
+
+#page-tasks .task-runtime-metric{
+  min-height:30px !important;
+  padding:0 10px !important;
+  gap:7px !important;
+  border-right:1px solid var(--panel-line) !important;
+}
+
+#page-tasks .task-runtime-metric:last-child{
+  border-right:0 !important;
+}
+
+#page-tasks .task-runtime-dot{
+  width:8px !important;
+  height:8px !important;
+  flex:0 0 8px !important;
+  box-shadow:none !important;
+}
+
+#page-tasks .task-runtime-metric > div{
+  min-width:0 !important;
+}
+
+#page-tasks .task-runtime-metric span{
+  display:block !important;
+  font-size:10px !important;
+  line-height:1.05 !important;
+  color:var(--muted) !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-runtime-metric strong{
+  display:block !important;
+  margin-top:1px !important;
+  font-size:14px !important;
+  line-height:1.08 !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-runtime-safe-actions{
+  width:auto !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:6px !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control summary{
+  width:78px !important;
+  height:29px !important;
+  min-height:29px !important;
+  padding:0 8px !important;
+  border-radius:7px !important;
+  font-size:11px !important;
+}
+
+#page-tasks .task-runtime-control{
+  position:relative !important;
+  width:78px !important;
+}
+
+#page-tasks .task-runtime-control[open] .task-runtime-actions{
+  position:absolute !important;
+  top:34px !important;
+  right:0 !important;
+  z-index:90 !important;
+  width:190px !important;
+  padding:8px !important;
+  display:grid !important;
+  grid-template-columns:minmax(0, 1fr) !important;
+  gap:6px !important;
+  border:1px solid var(--accent-line-soft) !important;
+  border-radius:8px !important;
+  background:rgba(3,8,12,0.98) !important;
+  box-shadow:0 14px 28px rgba(0,0,0,0.45) !important;
+}
+
+#page-tasks .task-runtime-actions .btn{
+  width:100% !important;
+  height:32px !important;
+  min-height:32px !important;
+  padding:0 8px !important;
+  border-radius:7px !important;
+  font-size:11px !important;
+}
+
+#page-tasks .task-plan-list-card-v2{
+  padding:12px !important;
+  border-radius:8px !important;
+}
+
+#page-tasks .task-plan-list-head{
+  margin-bottom:8px !important;
+}
+
+#page-tasks .task-plan-list-head h3{
+  font-size:18px !important;
+  line-height:1.1 !important;
+}
+
+#page-tasks .task-plan-filters{
+  gap:6px !important;
+  margin-bottom:8px !important;
+}
+
+#page-tasks .task-filter-pill{
+  height:32px !important;
+  min-height:32px !important;
+  padding:0 12px !important;
+  border-radius:7px !important;
+  font-size:12px !important;
+}
+
+#page-tasks .task-plan-item{
+  min-height:60px !important;
+  padding:9px 10px !important;
+  grid-template-columns:minmax(0, 1fr) !important;
+  border-radius:8px !important;
+}
+
+#page-tasks .task-plan-item-main{
+  gap:5px !important;
+}
+
+#page-tasks .task-plan-item-top{
+  gap:8px !important;
+  align-items:center !important;
+}
+
+#page-tasks .task-plan-item .task-item-title{
+  min-width:0 !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-plan-item-summary{
+  display:block !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  color:var(--muted) !important;
+  -webkit-line-clamp:unset !important;
+}
+
+#page-tasks .task-plan-item-icon,
+#page-tasks .task-plan-chevron,
+#page-tasks .task-plan-item-subline{
+  display:none !important;
+}
+
+#page-tasks .task-plan-detail-card-v2{
+  padding:12px !important;
+  border-radius:8px !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+
+#page-tasks .task-plan-editor-head{
+  min-height:42px !important;
+  padding:0 0 8px !important;
+  margin-bottom:8px !important;
+  border-bottom:1px solid var(--panel-line) !important;
+}
+
+#page-tasks .task-editor-kicker{
+  font-size:11px !important;
+  color:var(--muted) !important;
+}
+
+#page-tasks .task-detail-title{
+  margin-top:3px !important;
+  font-size:18px !important;
+  line-height:1.15 !important;
+}
+
+#page-tasks .task-inline-toggle{
+  min-height:30px !important;
+  gap:8px !important;
+  padding:0 !important;
+}
+
+#page-tasks .task-inline-toggle > span:first-child{
+  font-size:12px !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-plan-detail-scroll{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  gap:8px !important;
+  padding-right:4px !important;
+  padding-bottom:12px !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+}
+
+#page-tasks .task-plan-banner{
+  display:none !important;
+}
+
+#page-tasks .task-form-section.task-plan-panel{
+  padding:10px !important;
+  border-radius:8px !important;
+}
+
+#page-tasks .task-section-head{
+  margin-bottom:8px !important;
+  gap:6px !important;
+}
+
+#page-tasks .task-section-head strong{
+  font-size:14px !important;
+  line-height:1.15 !important;
+}
+
+#page-tasks .task-plan-grid-trigger{
+  grid-template-columns:minmax(0, 1.5fr) minmax(112px, 0.8fr) minmax(112px, 0.8fr) minmax(104px, 0.72fr) minmax(112px, 0.72fr) !important;
+  gap:8px !important;
+  align-items:end !important;
+}
+
+#page-tasks .task-plan-grid-trigger .ac-wide{
+  grid-column:1 / -1 !important;
+}
+
+#page-tasks .rule-condition-row{
+  padding:8px !important;
+  gap:7px !important;
+  border-radius:8px !important;
+}
+
+#page-tasks .rule-condition-head strong{
+  font-size:12px !important;
+  color:var(--muted) !important;
+}
+
+#page-tasks .rule-condition-row label{
+  min-width:0 !important;
+  font-size:12px !important;
+}
+
+#page-tasks .rule-condition-row .input,
+#page-tasks .rule-condition-row select,
+#page-tasks .rule-condition-row input{
+  min-width:0 !important;
+  width:100% !important;
+}
+
+#page-tasks .rule-condition-window[hidden]{
+  display:none !important;
+}
+
+#page-tasks .task-section-check{
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  gap:8px !important;
+  min-height:34px !important;
+  padding:0 10px !important;
+  overflow:hidden !important;
+}
+
+#page-tasks .task-section-check input[type="checkbox"]{
+  position:static !important;
+  opacity:1 !important;
+  flex:0 0 16px !important;
+  width:16px !important;
+  height:16px !important;
+  margin:0 !important;
+}
+
+#page-tasks .task-section-check span{
+  min-width:0 !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-action-bar-v2{
+  flex:0 0 auto !important;
+  gap:8px !important;
+  padding-top:8px !important;
+  border-top:1px solid var(--panel-line) !important;
+  background:var(--panel) !important;
+}
+
+#page-tasks .task-action-bar-v2 .btn{
+  height:38px !important;
+  min-height:38px !important;
+  border-radius:8px !important;
+  font-size:14px !important;
+}
+
+@media (min-width: 880px){
+  #page-tasks .task-action-bar-v2{
+    grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-strip{
+    grid-template-columns:minmax(0, 1fr) !important;
+  }
+
+  #page-tasks .task-runtime-metrics{
+    grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  #page-tasks .task-runtime-metric{
+    padding:0 6px !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    width:100% !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions > .btn,
+  #page-tasks .task-runtime-control,
+  #page-tasks .task-runtime-control summary{
+    width:100% !important;
+  }
+
+  #page-tasks .task-runtime-control[open] .task-runtime-actions{
+    position:static !important;
+    width:100% !important;
+    margin-top:5px !important;
+    box-shadow:none !important;
+  }
+
+  #page-tasks .task-plan-grid-trigger{
+    grid-template-columns:minmax(0, 1fr) !important;
+  }
+
+  #page-tasks .task-action-bar-v2{
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* 任务计划手机详情最终收束：避免英文长字段把编辑区撑出横向滚动条。 */
+@media (max-width: 879px){
+  #page-tasks .content,
+  #page-tasks #taskPageRoot,
+  #page-tasks .task-page-v2,
+  #page-tasks #taskWorkspace,
+  #page-tasks .task-workbench-v2,
+  #page-tasks .task-plan-detail-card-v2,
+  #page-tasks .task-plan-detail-scroll,
+  #page-tasks .task-plan-editor-form-v2,
+  #page-tasks .task-plan-section-cluster,
+  #page-tasks .task-plan-panel,
+  #page-tasks .task-section-grid,
+  #page-tasks .task-section-grid label{
+    max-width:100%;
+    min-width:0 !important;
+    overflow-x:hidden;
+    box-sizing:border-box;
+  }
+
+  #page-tasks .task-plan-section-cluster{
+    grid-template-columns:minmax(0, 1fr) !important;
+  }
+
+  #page-tasks .task-plan-section-cluster .task-span-2{
+    grid-column:auto !important;
+  }
+
+  #page-tasks .task-section-head{
+    min-width:0 !important;
+  }
+
+  #page-tasks .task-section-head strong{
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  #page-tasks .task-help-pop{
+    flex:0 0 auto;
+  }
+
+  #page-tasks .task-plan-grid-when .input,
+  #page-tasks .task-plan-grid-trigger .input,
+  #page-tasks .task-plan-grid-action .input,
+  #page-tasks .task-plan-grid-limits .input,
+  #page-tasks .task-window-times .input{
+    width:100%;
+    min-width:0 !important;
+    max-width:100%;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    width:100% !important;
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:5px;
+  }
+
+  #page-tasks .task-runtime-control[open]{
+    grid-column:1 / -1;
+  }
+
+  #page-tasks .task-runtime-control summary{
+    height:31px;
+    min-height:31px;
+    font-size:11px;
+    border-radius:7px;
+  }
+
+  #page-tasks .task-runtime-actions{
+    width:100% !important;
+    grid-template-columns:minmax(0, 1fr) !important;
+    gap:5px;
+  }
+
+  #page-tasks .task-runtime-safe-actions .btn,
+  #page-tasks .task-runtime-actions .btn{
+    height:31px;
+    min-height:31px;
+    padding:0 6px;
+    font-size:11px;
+    border-radius:7px;
+  }
+}
+
+/* 2026-07-10：手机端全局顶栏最终覆盖。
+   左侧路由横向滑动，右侧语言/颜色/LOGO 固定，避免窄屏换行或截字。 */
+@media (max-width: 879px){
+  .top-tabs{
+    grid-template-columns:minmax(0, 1fr) 108px !important;
+    width:100%;
+    min-width:0;
+  }
+
+  .top-left{
+    scroll-snap-type:x proximity;
+    padding-right:2px;
+  }
+
+  .top-left .tab{
+    scroll-snap-align:start;
+    height:32px;
+    min-width:max-content;
+    max-width:none;
+    padding:0 8px;
+    font-size:13px;
+    overflow:visible;
+    text-overflow:clip;
+  }
+
+  .top-right{
+    flex:0 0 108px;
+    width:108px;
+    min-width:108px;
+    max-width:108px;
+    gap:4px;
+  }
+
+  .top-right .icon-btn,
+  .top-right .logo-slot{
+    width:32px;
+    height:32px;
+    min-width:32px;
+    flex:0 0 32px;
+    padding:0;
+  }
+
+  .top-right #btnTheme{
+    width:32px;
+    min-width:32px;
+    max-width:32px;
+    padding:0;
+  }
+
+  html[lang="en-US"] .top-left{
+    gap:3px;
+  }
+
+  html[lang="en-US"] .top-left .tab{
+    padding:0 5px;
+    font-size:9px;
+  }
+}
+
+/* 2026-07-10：顶栏结构真正最终覆盖。
+   顶行放设备标识和全局工具；路由独占第二行横向滑动。 */
+.top-meta{
+  display:flex !important;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:0 8px !important;
+  min-height:32px;
+  flex:0 0 auto;
+  overflow:hidden;
+}
+
+.top-meta .logo-slot{
+  width:auto !important;
+  min-width:0 !important;
+  max-width:55%;
+  height:30px !important;
+  flex:0 1 auto !important;
+  border:0 !important;
+  background:transparent !important;
+  padding:0 2px !important;
+  justify-content:flex-start;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.top-meta .top-right{
+  flex:0 0 auto !important;
+  width:auto !important;
+  min-width:0 !important;
+  max-width:none !important;
+  height:32px;
+  display:flex !important;
+  flex-wrap:nowrap;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  margin-left:auto;
+  overflow:visible;
+}
+
+.top-meta .icon-btn{
+  flex:0 0 36px;
+  width:36px;
+  min-width:36px;
+  height:32px;
+}
+
+.top-meta #btnTheme{
+  width:38px;
+  min-width:38px;
+  max-width:38px;
+}
+
+.top-tabs{
+  display:flex !important;
+  grid-template-columns:none !important;
+  grid-auto-rows:auto !important;
+  width:100%;
+  min-width:0;
+  height:auto !important;
+  min-height:36px;
+  max-height:none !important;
+  padding:0 8px !important;
+  overflow:hidden;
+}
+
+.top-left{
+  width:100%;
+  height:auto !important;
+  min-width:0;
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  align-items:center;
+  gap:6px;
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+  overscroll-behavior-x:contain;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+
+.top-left::-webkit-scrollbar{
+  display:none;
+}
+
+@media (max-width: 879px){
+  .top-meta{
+    min-height:31px;
+    padding:0 !important;
+  }
+
+  .top-meta .logo-slot{
+    height:30px !important;
+    max-width:52%;
+    font-size:12px;
+  }
+
+  .top-meta .top-right{
+    height:30px;
+    gap:5px;
+  }
+
+  .top-meta .icon-btn,
+  .top-meta #btnTheme{
+    width:32px;
+    min-width:32px;
+    max-width:32px;
+    height:30px;
+    flex:0 0 32px;
+    padding:0;
+    border-radius:8px;
+  }
+
+  .top-tabs{
+    min-height:34px;
+    padding:0 !important;
+  }
+
+  .top-left{
+    gap:5px;
+    padding-right:0;
+  }
+
+  .top-left .tab{
+    height:32px;
+    min-width:max-content;
+    flex:0 0 auto;
+    padding:0 8px;
+    font-size:13px;
+    border-radius:8px;
+  }
+
+  html[lang="en-US"] .top-left{
+    gap:5px;
+  }
+
+  html[lang="en-US"] .top-left .tab{
+    padding:0 7px;
+    font-size:11px;
+  }
+}
+
+/* 2026-07-11：任务计划运行条 EOF 覆盖。
+   必须在全文件最后，防止前面历史样式继续覆盖任务计划运行条。 */
+#page-tasks .task-runtime-strip{
+  grid-template-columns:minmax(0, 1fr) 126px !important;
+  max-width:100% !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+}
+
+#page-tasks .task-runtime-safe-actions{
+  width:126px !important;
+  max-width:126px !important;
+  min-width:0 !important;
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  justify-content:flex-end !important;
+  gap:4px !important;
+  overflow:hidden !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control,
+#page-tasks .task-runtime-control summary{
+  width:61px !important;
+  min-width:0 !important;
+  max-width:61px !important;
+  box-sizing:border-box !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control summary{
+  height:28px !important;
+  min-height:28px !important;
+  padding:0 5px !important;
+  font-size:11px !important;
+  line-height:28px !important;
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-strip{
+    grid-template-columns:minmax(0, 1fr) !important;
+    overflow:visible !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    width:100% !important;
+    max-width:100% !important;
+    display:grid !important;
+    grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    gap:5px !important;
+    overflow:visible !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions > .btn,
+  #page-tasks .task-runtime-control,
+  #page-tasks .task-runtime-control summary{
+    width:100% !important;
+    max-width:100% !important;
+  }
+}
+
+#page-tasks .task-runtime-control:not([open]) .task-runtime-actions{
+  display:none !important;
+}
+
+#page-tasks .task-runtime-control:not([open]){
+  overflow:hidden !important;
+}
+
+#page-tasks .task-runtime-control[open]{
+  overflow:visible !important;
+}
+
+#page-tasks .task-runtime-control[open] .task-runtime-actions{
+  display:grid !important;
+}
+
+/* 2026-07-11：任务计划 UI/交互收束。
+   运行状态只做低干扰信息；计划列表和编辑区保持同级面板感。 */
+#page-tasks .task-runtime-card{
+  padding:0 !important;
+  margin-bottom:10px !important;
+  border-color:var(--panel-line) !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+#page-tasks .task-runtime-strip{
+  min-height:34px !important;
+  padding:5px 6px !important;
+  background:transparent !important;
+  border-radius:8px !important;
+}
+
+#page-tasks .task-runtime-metric{
+  min-height:24px !important;
+  padding:0 9px !important;
+}
+
+#page-tasks .task-runtime-metric span:not(.task-runtime-dot){
+  font-size:10px !important;
+  line-height:1 !important;
+}
+
+#page-tasks .task-runtime-metric strong{
+  margin-top:1px !important;
+  font-size:13px !important;
+  line-height:1.05 !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control summary{
+  height:26px !important;
+  min-height:26px !important;
+  line-height:26px !important;
+  font-size:11px !important;
+  border-radius:7px !important;
+}
+
+#page-tasks .task-plan-list-card-v2,
+#page-tasks .task-plan-detail-card-v2{
+  border-radius:8px !important;
+  background:rgba(255,255,255,0.012) !important;
+}
+
+#page-tasks .task-plan-item{
+  min-height:56px !important;
+  padding:8px 10px !important;
+}
+
+#page-tasks .task-plan-item-summary{
+  font-size:12px !important;
+}
+
+#page-tasks .task-plan-detail-card-v2 .task-plan-editor-head{
+  min-height:38px !important;
+}
+
+#page-tasks .task-editor-kicker{
+  letter-spacing:0 !important;
+}
+
+#page-tasks .task-detail-title{
+  font-size:17px !important;
+}
+
+#page-tasks .task-form-section.task-plan-panel{
+  background:rgba(255,255,255,0.01) !important;
+}
+
+#page-tasks .task-condition-preview{
+  color:var(--text) !important;
+  background:rgba(255,255,255,0.018) !important;
+  border-color:var(--panel-line) !important;
+}
+
+/* 2026-07-11：任务计划状态行与条件预览再收束。
+   顶部只表达运行状态，不抢计划编辑的视觉权重。 */
+#page-tasks .task-runtime-card{
+  margin-bottom:8px !important;
+}
+
+#page-tasks .task-runtime-strip{
+  min-height:30px !important;
+  padding:0 !important;
+  display:grid !important;
+  grid-template-columns:minmax(0, 1fr) auto !important;
+  align-items:center !important;
+  gap:8px !important;
+}
+
+#page-tasks .task-runtime-metrics{
+  display:flex !important;
+  align-items:center !important;
+  gap:0 !important;
+  min-width:0 !important;
+  overflow:hidden !important;
+  border:1px solid var(--panel-line) !important;
+  border-radius:8px !important;
+  background:rgba(255,255,255,0.012) !important;
+}
+
+#page-tasks .task-runtime-metric{
+  flex:1 1 0 !important;
+  min-width:0 !important;
+  min-height:28px !important;
+  padding:0 10px !important;
+  border:0 !important;
+  border-right:1px solid var(--panel-line) !important;
+  border-radius:0 !important;
+  background:transparent !important;
+}
+
+#page-tasks .task-runtime-metric:last-child{
+  border-right:0 !important;
+}
+
+#page-tasks .task-runtime-metric span:not(.task-runtime-dot){
+  font-size:10px !important;
+  line-height:1 !important;
+}
+
+#page-tasks .task-runtime-metric strong{
+  display:inline !important;
+  margin-left:4px !important;
+  font-size:12px !important;
+  line-height:1 !important;
+}
+
+#page-tasks .task-condition-preview{
+  min-height:32px !important;
+  display:flex !important;
+  align-items:center !important;
+  padding:0 10px !important;
+  line-height:1.25 !important;
+}
+
+#page-tasks .task-plan-head-side .task-badge-row{
+  justify-content:flex-end !important;
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-strip{
+    grid-template-columns:minmax(0, 1fr) !important;
+    gap:6px !important;
+  }
+
+  #page-tasks .task-runtime-metrics{
+    width:100% !important;
+  }
+
+  #page-tasks .task-runtime-metric{
+    min-height:30px !important;
+    padding:0 6px !important;
+  }
+
+  #page-tasks .task-runtime-metric span:not(.task-runtime-dot){
+    display:block !important;
+    max-width:100% !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+
+  #page-tasks .task-runtime-metric strong{
+    display:block !important;
+    margin:1px 0 0 !important;
+    max-width:100% !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-card{
+    margin-bottom:8px !important;
+  }
+
+  #page-tasks .task-runtime-strip{
+    min-height:0 !important;
+    padding:6px !important;
+  }
+
+  #page-tasks .task-runtime-metrics{
+    gap:0 !important;
+  }
+
+  #page-tasks .task-runtime-metric{
+    padding:0 5px !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    margin-top:6px !important;
+  }
+}
+
+/* 2026-07-11: task-plan final override, intentionally last. */
+#page-tasks .task-runtime-strip{
+  min-height:28px !important;
+  padding:0 !important;
+  border-radius:8px !important;
+  background:transparent !important;
+}
+
+#page-tasks .task-runtime-metrics{
+  display:flex !important;
+  align-items:center !important;
+  min-width:0 !important;
+  gap:0 !important;
+}
+
+#page-tasks .task-runtime-metric{
+  display:flex !important;
+  align-items:center !important;
+  gap:5px !important;
+  min-height:28px !important;
+  padding:0 12px !important;
+}
+
+#page-tasks .task-runtime-metric > div{
+  display:flex !important;
+  align-items:baseline !important;
+  gap:5px !important;
+  min-width:0 !important;
+}
+
+#page-tasks .task-runtime-metric span:not(.task-runtime-dot){
+  font-size:11px !important;
+  line-height:1 !important;
+  color:var(--muted) !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-runtime-metric strong{
+  display:inline !important;
+  margin:0 !important;
+  font-size:12px !important;
+  line-height:1 !important;
+  white-space:nowrap !important;
+}
+
+#page-tasks .task-runtime-safe-actions{
+  display:flex !important;
+  align-items:center !important;
+  gap:6px !important;
+  margin-top:0 !important;
+}
+
+#page-tasks .task-runtime-safe-actions > .btn,
+#page-tasks .task-runtime-control,
+#page-tasks .task-runtime-control summary{
+  width:58px !important;
+  min-width:58px !important;
+  height:26px !important;
+  min-height:26px !important;
+  padding:0 !important;
+}
+
+#page-tasks .rule-condition-row .task-plan-grid-trigger{
+  grid-template-columns:repeat(5, minmax(0, 1fr)) !important;
+  gap:8px !important;
+}
+
+#page-tasks .rule-condition-row .task-plan-grid-trigger .ac-wide{
+  grid-column:1 / -1 !important;
+}
+
+#page-tasks .rule-condition-row label,
+#page-tasks .rule-condition-row .input,
+#page-tasks .rule-condition-row select,
+#page-tasks .rule-condition-row input{
+  min-width:0 !important;
+}
+
+#page-tasks .task-condition-preview{
+  min-height:30px !important;
+  padding:6px 10px !important;
+  border-radius:7px !important;
+  color:var(--text) !important;
+  background:rgba(255,255,255,0.035) !important;
+}
+
+#page-tasks .task-action-bar-v2 .btn{
+  min-height:34px !important;
+}
+
+@media (max-width: 879px){
+  #page-tasks .task-runtime-strip{
+    grid-template-columns:minmax(0, 1fr) !important;
+    gap:6px !important;
+    padding:5px !important;
+  }
+
+  #page-tasks .task-runtime-metrics{
+    display:grid !important;
+    grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+    border-radius:7px !important;
+  }
+
+  #page-tasks .task-runtime-metric{
+    min-height:30px !important;
+    padding:0 6px !important;
+    border-right:1px solid var(--panel-line) !important;
+  }
+
+  #page-tasks .task-runtime-metric:last-child{
+    border-right:0 !important;
+  }
+
+  #page-tasks .task-runtime-metric > div{
+    display:grid !important;
+    gap:2px !important;
+  }
+
+  #page-tasks .task-runtime-metric span:not(.task-runtime-dot),
+  #page-tasks .task-runtime-metric strong{
+    display:block !important;
+    max-width:100% !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+
+  #page-tasks .task-runtime-safe-actions{
+    justify-content:flex-end !important;
+  }
+
+  #page-tasks .rule-condition-row .task-plan-grid-trigger{
+    grid-template-columns:minmax(0, 1fr) !important;
+  }
+
+  #page-tasks .rule-condition-row .task-plan-grid-trigger .ac-wide{
+    grid-column:1 / -1 !important;
+  }
 }

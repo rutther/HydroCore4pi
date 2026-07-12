@@ -8,7 +8,7 @@
     {
       "step_type": "run_action_unit",
       "action_unit_id": "dose_a_3s",
-      "action_unit_name": "Dose pump A for 3 s"
+      "action_unit_name": "加药泵 A 运行 3 秒"
     }
   ],
   "summary": "加药泵 A 运行 3 秒",

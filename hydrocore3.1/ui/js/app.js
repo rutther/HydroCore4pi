@@ -3,7 +3,7 @@
 
 import { STATE, loadUiState } from "./state.js";
 import { initI18n, toggleLang, t, applyI18nToDom } from "./i18n.js";
-import { initTheme, toggleTheme, getTheme } from "./theme.js?v=industrial-ui-16";
+import { initTheme, toggleTheme, getTheme } from "./theme.js?v=physical-execution-20260711-2";
 import { startClock } from "./time.js";
 import { setActivePage, setActiveHardwareSub } from "./router.js";
 
@@ -11,10 +11,10 @@ import { initHardwareScan } from "./pages/hardware/scan.js";
 import { initHardwareSensors } from "./pages/hardware/sensors.js";
 import { initHardwareVerify } from "./pages/hardware/verify.js";
 import { initHardwarePlan } from "./pages/hardware/plan.js";
-import { initDashboard } from "./pages/dashboard/dashboard.js?v=industrial-ui-16";
-import { initActionConfig } from "./pages/action_config/index.js";
-import { initTasksPage } from "./pages/tasks.js";
-import { initSystemPage, hydrateSystemChrome } from "./pages/system.js?v=industrial-ui-16";
+import { initDashboard } from "./pages/dashboard/dashboard.js?v=physical-execution-20260711-2";
+import { initActionConfig } from "./pages/action_config/index.js?v=physical-execution-20260711-2";
+import { initTasksPage } from "./pages/tasks.js?v=physical-execution-20260711-2";
+import { initSystemPage, hydrateSystemChrome } from "./pages/system.js?v=physical-execution-20260711-2";
 
 function renderTopTabs() {
   const top = document.getElementById("topTabs");
@@ -28,6 +28,22 @@ function renderTopTabs() {
     { key: "system",        labelKey: "nav.system" },
   ];
 
+  function syncTopTabScroll(activeKey = STATE.page) {
+    const active = top.querySelector(`.tab[data-page="${activeKey}"]`);
+    if (!active) return;
+
+    requestAnimationFrame(() => {
+      if (window.matchMedia && window.matchMedia("(max-width: 879px)").matches) {
+        const index = tabs.findIndex(x => x.key === activeKey);
+        const targetLeft = index >= 4 ? Math.max(0, top.scrollWidth - top.clientWidth) : 0;
+        top.scrollTo({ left: targetLeft, behavior: "auto" });
+        return;
+      }
+
+      active.scrollIntoView({ block: "nearest", inline: "nearest" });
+    });
+  }
+
   for (const it of tabs) {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -37,6 +53,7 @@ function renderTopTabs() {
 
     btn.onclick = async () => {
       setActivePage(it.key);
+      syncTopTabScroll(it.key);
 
       if (it.key === "hardware") {
         setActiveHardwareSub(STATE.hardwareSub);
@@ -53,6 +70,8 @@ function renderTopTabs() {
 
     top.appendChild(btn);
   }
+
+  syncTopTabScroll();
 }
 
 function renderHardwareSubTabs() {
@@ -75,16 +94,20 @@ function renderHardwareSubTabs() {
 
       // 子页初始化/刷新：切到哪个子页就初始化哪个模块
       // 说明：这些 init 都是“覆盖式绑定 onclick”，重复调用不会叠加事件
-      if (k === "scan") {
-        initHardwareScan();
-      } else if (k === "sensors") {
-        initHardwareSensors();
-      } else if (k === "verify") {
-        initHardwareVerify();
-      } else if (k === "plan") {
-        initHardwarePlan();
-      }
+      initActiveHardwareSub().catch(err => console.error(err));
     };
+  }
+}
+
+async function initActiveHardwareSub() {
+  if (STATE.hardwareSub === "scan") {
+    initHardwareScan();
+  } else if (STATE.hardwareSub === "sensors") {
+    initHardwareSensors();
+  } else if (STATE.hardwareSub === "verify") {
+    await initHardwareVerify();
+  } else if (STATE.hardwareSub === "plan") {
+    initHardwarePlan();
   }
 }
 
@@ -108,8 +131,11 @@ function bindGlobalButtons() {
   function updateThemeButton() {
     const theme = getTheme();
     const isBlue = theme === "blue-cyber";
-    btnTheme.textContent = isBlue ? "蓝" : "绿";
-    btnTheme.title = isBlue ? "当前蓝色配色，点击切换为绿色" : "当前绿色配色，点击切换为蓝色";
+    const isZh = STATE.lang === "zh-CN";
+    btnTheme.textContent = isBlue ? (isZh ? "蓝" : "B") : (isZh ? "绿" : "G");
+    btnTheme.title = isBlue
+      ? (isZh ? "当前蓝色配色，点击切换为绿色" : "Current blue theme, switch to green")
+      : (isZh ? "当前绿色配色，点击切换为蓝色" : "Current green theme, switch to blue");
     btnTheme.setAttribute("aria-label", btnTheme.title);
   }
 
@@ -122,12 +148,18 @@ function bindGlobalButtons() {
     applyStaticLabels();
     applyI18nToDom();
 
-    // 翻译按钮文案
-    btnLang.textContent = (STATE.lang === "zh-CN") ? "译" : "EN";
+    btnLang.textContent = (STATE.lang === "zh-CN") ? "中" : "EN";
+    btnLang.title = (STATE.lang === "zh-CN") ? "当前中文，点击切换英文" : "Current English, switch to Chinese";
+    btnLang.setAttribute("aria-label", btnLang.title);
+    updateThemeButton();
 
-    // 当前页如果是硬件扫描，重新刷新扫描页静态文案
-    if (STATE.page === "hardware" && STATE.hardwareSub === "scan") {
-      initHardwareScan();
+    // 当前硬件子页也要随语言变化重绘，避免外壳已切换、页面正文仍停留在旧语言。
+    if (STATE.page === "hardware") {
+      await initActiveHardwareSub();
+    }
+
+    if (STATE.page === "dashboard") {
+      initDashboard();
     }
 
     // 当前页如果是动作配置，则重绘动作配置页面
@@ -148,7 +180,9 @@ function bindGlobalButtons() {
   };
 
   // 初始化显示
-  btnLang.textContent = (STATE.lang === "zh-CN") ? "译" : "EN";
+  btnLang.textContent = (STATE.lang === "zh-CN") ? "中" : "EN";
+  btnLang.title = (STATE.lang === "zh-CN") ? "当前中文，点击切换英文" : "Current English, switch to Chinese";
+  btnLang.setAttribute("aria-label", btnLang.title);
   updateThemeButton();
 }
 
@@ -180,15 +214,7 @@ async function main() {
   } else if (STATE.page === "system") {
     await initSystemPage();
   } else if (STATE.page === "hardware") {
-    if (STATE.hardwareSub === "sensors") {
-      initHardwareSensors();
-    } else if (STATE.hardwareSub === "verify") {
-      await initHardwareVerify();
-    } else if (STATE.hardwareSub === "plan") {
-      initHardwarePlan();
-    } else {
-      initHardwareScan();
-    }
+    await initActiveHardwareSub();
   }
 
   // 绑定全局按钮
@@ -205,3 +231,5 @@ main().catch(err => {
   const pageArea = document.getElementById("pageArea");
   pageArea.innerHTML = `<div class="empty-hint">启动失败：${String(err)}</div>`;
 });
+
+

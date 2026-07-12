@@ -34,10 +34,26 @@ def _lock_for(lock_map: Dict[str, threading.Lock], item_id: str) -> threading.Lo
         return lock_map[item_id]
 
 
+def _assert_real_output_allowed(dry_run: bool) -> None:
+    # ``dry_run`` remains available to backend tests, but normal product
+    # execution is not gated by a second global "hardware armed" switch.
+    return
+
+
 def _sleep(duration_ms: int, dry_run: bool) -> int:
     actual_ms = min(duration_ms, 100) if dry_run else duration_ms
-    time.sleep(actual_ms / 1000.0)
-    return actual_ms
+    if dry_run:
+        time.sleep(actual_ms / 1000.0)
+        return actual_ms
+
+    slept_ms = 0
+    step_ms = 200
+    while slept_ms < actual_ms:
+        _assert_real_output_allowed(dry_run)
+        chunk_ms = min(step_ms, actual_ms - slept_ms)
+        time.sleep(chunk_ms / 1000.0)
+        slept_ms += chunk_ms
+    return slept_ms
 
 
 def _parse_ts(raw: str) -> Optional[datetime.datetime]:
@@ -152,8 +168,22 @@ def latest_task_activity_map() -> Dict[str, Dict[str, Any]]:
     return out
 
 
-def _run_relay_command(driver: Any, output: Dict[str, Any], command: str, detail_steps: List[Dict[str, Any]]) -> None:
+def _track_output(touched_outputs: Optional[Dict[str, Dict[str, Any]]], output: Dict[str, Any]) -> None:
+    if touched_outputs is not None:
+        touched_outputs[str(output["id"])] = output
+
+
+def _run_relay_command(
+    driver: Any,
+    output: Dict[str, Any],
+    command: str,
+    detail_steps: List[Dict[str, Any]],
+    dry_run: bool,
+    touched_outputs: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> None:
+    _assert_real_output_allowed(dry_run)
     result = driver.set_relay(output, command)
+    _track_output(touched_outputs, output)
     detail_steps.append({
         "type": "relay_state",
         "output_id": output["id"],
@@ -162,8 +192,17 @@ def _run_relay_command(driver: Any, output: Dict[str, Any], command: str, detail
     })
 
 
-def _run_pwm_command(driver: Any, output: Dict[str, Any], duty_percent: int, detail_steps: List[Dict[str, Any]]) -> None:
+def _run_pwm_command(
+    driver: Any,
+    output: Dict[str, Any],
+    duty_percent: int,
+    detail_steps: List[Dict[str, Any]],
+    dry_run: bool,
+    touched_outputs: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> None:
+    _assert_real_output_allowed(dry_run)
     result = driver.set_pwm(output, duty_percent)
+    _track_output(touched_outputs, output)
     detail_steps.append({
         "type": "pwm_state",
         "output_id": output["id"],
@@ -172,38 +211,47 @@ def _run_pwm_command(driver: Any, output: Dict[str, Any], duty_percent: int, det
     })
 
 
-def _execute_action_unit_inner(action_unit: Dict[str, Any], dry_run: bool) -> Dict[str, Any]:
+def _safe_output(driver: Any, output: Dict[str, Any], detail_steps: List[Dict[str, Any]]) -> None:
+    result = driver.apply_safe_state(output)
+    detail_steps.append({
+        "type": "safe_state",
+        "output_id": output["id"],
+        "result": result,
+    })
+
+
+def _execute_action_unit_inner(
+    action_unit: Dict[str, Any],
+    dry_run: bool,
+    driver: Optional[Any] = None,
+    touched_outputs: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
     if not action_unit.get("enabled", True):
         raise RuntimeError("Action unit is disabled")
-    if not dry_run:
-        from .action_scheduler import is_hardware_armed
-        if not is_hardware_armed():
-            raise RuntimeError("Real GPIO output is blocked until hardware is armed")
 
     output = get_actuator(action_unit["output_id"])
     if not output.get("enabled", True):
         raise RuntimeError(f"Output is disabled: {output['id']}")
-    if not dry_run and not output.get("allow_real_output", output.get("allow_real", False)):
-        raise RuntimeError(f"Real GPIO output is not allowed for: {output['id']}")
 
-    driver = get_gpio_driver(dry_run)
+    driver = driver or get_gpio_driver(dry_run)
     lock = _lock_for(_output_locks, output["id"])
     if not lock.acquire(blocking=False):
         raise RuntimeError(f"Output is busy: {output['id']}")
 
     detail_steps: List[Dict[str, Any]] = []
+    completed = False
     try:
         mode = action_unit["mode"]
         params = action_unit.get("params") or {}
 
         if mode == "relay_state":
-            _run_relay_command(driver, output, params["command"], detail_steps)
+            _run_relay_command(driver, output, params["command"], detail_steps, dry_run, touched_outputs)
 
         elif mode == "relay_pulse":
-            _run_relay_command(driver, output, "on", detail_steps)
+            _run_relay_command(driver, output, "on", detail_steps, dry_run, touched_outputs)
             slept_ms = _sleep(int(params["duration_ms"]), dry_run)
             detail_steps.append({"type": "wait", "slept_ms": slept_ms})
-            _run_relay_command(driver, output, "off", detail_steps)
+            _run_relay_command(driver, output, "off", detail_steps, dry_run, touched_outputs)
 
         elif mode == "relay_pattern":
             total_duration_ms = int(params["total_duration_ms"])
@@ -212,11 +260,11 @@ def _execute_action_unit_inner(action_unit: Dict[str, Any], dry_run: bool) -> Di
             elapsed_ms = 0
             while elapsed_ms < total_duration_ms:
                 cycle_index = int(elapsed_ms / cycle_ms)
-                _run_relay_command(driver, output, "on", detail_steps)
+                _run_relay_command(driver, output, "on", detail_steps, dry_run, touched_outputs)
                 slept_on = _sleep(min(on_duration_ms, total_duration_ms - elapsed_ms), dry_run)
                 detail_steps.append({"type": "wait", "phase": "on", "cycle": cycle_index, "slept_ms": slept_on})
                 elapsed_ms += on_duration_ms
-                _run_relay_command(driver, output, "off", detail_steps)
+                _run_relay_command(driver, output, "off", detail_steps, dry_run, touched_outputs)
                 if elapsed_ms >= total_duration_ms:
                     break
                 off_duration_ms = min(cycle_ms - on_duration_ms, total_duration_ms - elapsed_ms)
@@ -227,15 +275,16 @@ def _execute_action_unit_inner(action_unit: Dict[str, Any], dry_run: bool) -> Di
 
         elif mode == "pwm_run":
             duty_percent = int(params["duty_percent"])
-            _run_pwm_command(driver, output, duty_percent, detail_steps)
+            _run_pwm_command(driver, output, duty_percent, detail_steps, dry_run, touched_outputs)
             slept_ms = _sleep(int(params["duration_ms"]), dry_run)
             detail_steps.append({"type": "wait", "slept_ms": slept_ms})
             safe_duty = int(output.get("safe_duty", 0))
-            _run_pwm_command(driver, output, safe_duty, detail_steps)
+            _run_pwm_command(driver, output, safe_duty, detail_steps, dry_run, touched_outputs)
 
         else:
             raise RuntimeError(f"Unsupported action mode: {mode}")
 
+        completed = True
         return {
             "output": output,
             "mode": mode,
@@ -243,6 +292,11 @@ def _execute_action_unit_inner(action_unit: Dict[str, Any], dry_run: bool) -> Di
             "dry_run": dry_run,
         }
     finally:
+        if not dry_run and not completed:
+            try:
+                _safe_output(driver, output, detail_steps)
+            except Exception:
+                pass
         lock.release()
 
 
@@ -255,7 +309,8 @@ def execute_action_unit(action_unit_id: str, source: str = "manual", dry_run: bo
     }
 
     try:
-        run_detail = _execute_action_unit_inner(action_unit, bool(dry_run))
+        touched_outputs: Dict[str, Dict[str, Any]] = {}
+        run_detail = _execute_action_unit_inner(action_unit, bool(dry_run), touched_outputs=touched_outputs)
         detail.update(run_detail)
         message = "Dry-run action completed" if dry_run else "Real action completed"
         log_id = write_action_log(
@@ -306,7 +361,10 @@ def execute_action_task(task_id: str, source: str = "manual", dry_run: bool = Tr
         log_id = write_action_log(source, "blocked", message, detail, task_id=task_id, run_kind="task")
         return {"ok": False, "status": "blocked", "message": message, "log_id": log_id, "detail": detail}
 
+    driver: Optional[Any] = None
+    touched_outputs: Dict[str, Dict[str, Any]] = {}
     try:
+        driver = get_gpio_driver(bool(dry_run))
         for index, step in enumerate(task.get("steps", [])):
             step_type = step.get("step_type")
             if step_type == "wait":
@@ -322,7 +380,12 @@ def execute_action_task(task_id: str, source: str = "manual", dry_run: bool = Tr
                 raise RuntimeError(f"Unsupported task step type: {step_type}")
 
             action_unit = get_action_unit(step["action_unit_id"])
-            run_detail = _execute_action_unit_inner(action_unit, bool(dry_run))
+            run_detail = _execute_action_unit_inner(
+                action_unit,
+                bool(dry_run),
+                driver=driver,
+                touched_outputs=touched_outputs,
+            )
             detail["steps"].append({
                 "index": index,
                 "step_type": "run_action_unit",
@@ -342,6 +405,19 @@ def execute_action_task(task_id: str, source: str = "manual", dry_run: bool = Tr
         )
         return {"ok": True, "status": "success", "message": message, "log_id": log_id, "detail": detail}
     except Exception as exc:
+        if not dry_run and driver is not None:
+            safe_steps: List[Dict[str, Any]] = []
+            for output in touched_outputs.values():
+                try:
+                    _safe_output(driver, output, safe_steps)
+                except Exception as safe_exc:
+                    safe_steps.append({
+                        "type": "safe_state_failed",
+                        "output_id": output.get("id"),
+                        "error": str(safe_exc),
+                    })
+            if safe_steps:
+                detail["safe_steps"] = safe_steps
         detail["error"] = str(exc)
         log_id = write_action_log(
             source=source,
@@ -354,6 +430,88 @@ def execute_action_task(task_id: str, source: str = "manual", dry_run: bool = Tr
         return {"ok": False, "status": "failed", "message": str(exc), "log_id": log_id, "detail": detail}
     finally:
         task_lock.release()
+
+
+def stop_all_outputs(source: str = "manual-stop-all") -> Dict[str, Any]:
+    detail: Dict[str, Any] = {
+        "run_kind": "output_safety",
+        "dry_run": False,
+        "steps": [],
+    }
+    try:
+        outputs = list_actuators()
+        driver = get_gpio_driver(False)
+        errors: List[Dict[str, Any]] = []
+        for output in outputs:
+            lock = _lock_for(_output_locks, output["id"])
+            acquired = lock.acquire(blocking=False)
+            try:
+                try:
+                    result = driver.apply_safe_state(output)
+                    detail["steps"].append({
+                        "type": "safe_state",
+                        "output_id": output["id"],
+                        "locked": acquired,
+                        "result": result,
+                    })
+                except Exception as output_exc:
+                    error_item = {
+                        "output_id": output.get("id"),
+                        "gpio_pin": output.get("gpio_pin", output.get("pin")),
+                        "message": str(output_exc),
+                    }
+                    errors.append(error_item)
+                    detail["steps"].append({
+                        "type": "safe_state_failed",
+                        "output_id": output.get("id"),
+                        "locked": acquired,
+                        "error": str(output_exc),
+                    })
+            finally:
+                if acquired:
+                    lock.release()
+        if errors:
+            detail["errors"] = errors
+            log_id = write_action_log(
+                source=source,
+                status="partial",
+                message="Some outputs could not be set to safe state",
+                detail=detail,
+                run_kind="output_safety",
+            )
+            return {
+                "ok": False,
+                "status": "partial",
+                "message": "Some outputs could not be set to safe state",
+                "errors": errors,
+                "log_id": log_id,
+                "detail": detail,
+            }
+        log_id = write_action_log(
+            source=source,
+            status="success",
+            message="All outputs set to safe state",
+            detail=detail,
+            run_kind="output_safety",
+        )
+        return {"ok": True, "status": "success", "message": "All outputs set to safe state", "log_id": log_id, "detail": detail}
+    except Exception as exc:
+        detail["error"] = str(exc)
+        log_id = write_action_log(
+            source=source,
+            status="failed",
+            message=str(exc),
+            detail=detail,
+            run_kind="output_safety",
+        )
+        return {"ok": False, "status": "failed", "message": str(exc), "log_id": log_id, "detail": detail}
+
+
+def initialize_output_safety() -> Dict[str, Any]:
+    try:
+        return stop_all_outputs(source="startup-safety")
+    except Exception as exc:
+        return {"ok": False, "status": "failed", "message": str(exc)}
 
 
 def action_runtime_summary() -> Dict[str, Any]:

@@ -7,10 +7,10 @@ const TEXT = {
     },
     profile: {
       title: "设备预设",
-      type: "类型",
-      version: "版本",
-      import: "导入 JSON",
-      confirm: "使用此预设",
+      type: "控制板",
+      version: "预设文件",
+      import: "导入预设文件",
+      confirm: "应用此预设",
       selected: "当前选中预设",
       current: "当前已确认预设",
       json: "高级信息",
@@ -20,14 +20,14 @@ const TEXT = {
       fields: {
         name: "名称",
         description: "说明",
-        switchPins: "开关输出 GPIO",
-        pwmPins: "PWM 输出 GPIO",
+        switchPins: "可用于继电器的 GPIO",
+        pwmPins: "可用于 PWM 的 GPIO",
         pwmRange: "PWM 频率范围",
         pwmDefault: "默认 PWM 频率",
-        openLevel: "默认开关打开电平",
-        file: "文件",
-        type: "类型",
-        version: "版本"
+        openLevel: "默认继电器触发方式",
+        file: "配置来源",
+        type: "控制板",
+        version: "预设文件"
       },
       levelMap: {
         low: "低电平时打开",
@@ -167,10 +167,10 @@ const TEXT = {
     },
     profile: {
       title: "Board Presets",
-      type: "Type",
-      version: "Version",
-      import: "Import JSON",
-      confirm: "Use This Preset",
+      type: "Controller",
+      version: "Preset File",
+      import: "Import Preset File",
+      confirm: "Apply Preset",
       selected: "Selected Preset",
       current: "Current Confirmed Preset",
       json: "Advanced Info",
@@ -180,14 +180,14 @@ const TEXT = {
       fields: {
         name: "Name",
         description: "Description",
-        switchPins: "Switch GPIO",
-        pwmPins: "PWM GPIO",
+        switchPins: "GPIO usable for relays",
+        pwmPins: "GPIO usable for PWM",
         pwmRange: "PWM Frequency Range",
         pwmDefault: "Default PWM Frequency",
-        openLevel: "Default Switch Open Level",
-        file: "File",
-        type: "Type",
-        version: "Version"
+        openLevel: "Default Relay Trigger",
+        file: "Preset Source",
+        type: "Controller",
+        version: "Preset File"
       },
       levelMap: {
         low: "On when low",

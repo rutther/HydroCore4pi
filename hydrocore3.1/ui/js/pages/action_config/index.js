@@ -1,4 +1,4 @@
-import { buildActionConfigTemplate } from "./template.js";
+import { buildActionConfigTemplate } from "./template.js?v=physical-execution-20260711-2";
 import { AC_STATE, resetActionConfigState } from "./store.js";
 import {
   fetchProfileList,
@@ -6,17 +6,17 @@ import {
   fetchCurrentProfile,
   confirmCurrentProfile,
   importProfileFile
-} from "./api.js";
+} from "./api.js?v=physical-execution-20260711-2";
 import {
   renderProfilePanel,
   bindProfilePanel,
   renderModuleTabs
-} from "./profile-panel.js";
+} from "./profile-panel.js?v=system-layout-clean-20260711-2";
 import {
   bindRuntimePanels,
   refreshActionRuntime
-} from "./runtime-panel.js";
-import { getAcText } from "./text.js";
+} from "./runtime-panel.js?v=physical-execution-20260711-2";
+import { getAcText } from "./text.js?v=system-layout-clean-20260711-2";
 
 async function loadListAndCurrent() {
   const listRes = await fetchProfileList();

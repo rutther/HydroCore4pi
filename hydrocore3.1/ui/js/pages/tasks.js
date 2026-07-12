@@ -1,4 +1,4 @@
-﻿import {
+import {
   deleteActionRule,
   deleteActionSchedule,
   deleteActionTask,
@@ -15,10 +15,11 @@
   saveActionTask,
   saveAutomationConfig,
   startAutomationRuntime,
+  stopAllOutputs,
   stopAutomationRuntime,
   triggerActionSchedule
-} from "./action_config/api.js";
-import { initActionConfig } from "./action_config/index.js";
+} from "./action_config/api.js?v=physical-execution-20260711-2";
+import { initActionConfig } from "./action_config/index.js?v=physical-execution-20260711-2";
 import { apiMetaPlanView } from "../api.js";
 import { setActivePage } from "../router.js";
 import { t } from "../i18n.js";
@@ -44,6 +45,7 @@ const TASK_STATE = {
   selectedRuleId: "",
   selectedScheduleId: "",
   taskDraftSteps: [],
+  ruleDraftConditions: [],
   status: {
     tasks: "",
     rules: "",
@@ -55,7 +57,8 @@ const TASK_STATE = {
     rules: "",
     schedules: "",
     logs: ""
-  }
+  },
+  onPlanDraftChange: null
 };
 
 function loadTaskUiState() {
@@ -64,9 +67,7 @@ function loadTaskUiState() {
     if (!raw) return;
     const saved = JSON.parse(raw);
     if (saved && typeof saved === "object") {
-      if (saved.activeTab === "plans" || saved.activeTab === "logs" || saved.activeTab === "diagnostics") {
-        TASK_STATE.activeTab = saved.activeTab;
-      }
+      if (saved.activeTab === "plans" || saved.activeTab === "logs") TASK_STATE.activeTab = saved.activeTab;
       if (saved.planFilter === "all" || saved.planFilter === "schedule" || saved.planFilter === "rule" || saved.planFilter === "disabled") {
         TASK_STATE.planFilter = saved.planFilter;
       }
@@ -180,7 +181,10 @@ function blockedReasonLabel(reason) {
     "Task is disabled": tr("tasks.blocked.task_disabled"),
     "Task is running": tr("tasks.blocked.task_running"),
     "No recent data": tr("tasks.blocked.no_recent_data"),
+    "No sensor data available": tr("tasks.blocked.no_recent_data"),
+    "Sensor data is stale": tr("tasks.rule.stale"),
     "Rule conditions not met": tr("tasks.blocked.rule_not_matched"),
+    "Threshold is not matched": tr("tasks.blocked.rule_not_matched"),
     "Cooldown is active": tr("tasks.blocked.cooldown_active"),
     "Outside active window": tr("tasks.window.outside")
   };
@@ -267,16 +271,17 @@ function findPlanSourceByKey(key) {
 
 function findPlanSourceForRule(rule) {
   if (!rule) return null;
-  const exact = findPlanSourceByKey(planSourceKey(rule.signal_protocol, rule.signal_address, rule.signal_parameter));
+  const firstCondition = Array.isArray(rule.conditions) && rule.conditions.length ? rule.conditions[0] : rule;
+  const exact = findPlanSourceByKey(planSourceKey(firstCondition.signal_protocol, firstCondition.signal_address, firstCondition.signal_parameter));
   if (exact) return exact;
-  const sameProtocol = TASK_STATE.planSources.find((item) => item.protocol === rule.signal_protocol && item.parameter === rule.signal_parameter);
+  const sameProtocol = TASK_STATE.planSources.find((item) => item.protocol === firstCondition.signal_protocol && item.parameter === firstCondition.signal_parameter);
   if (sameProtocol) return sameProtocol;
-  return TASK_STATE.planSources.find((item) => item.parameter === rule.signal_parameter) || null;
+  return TASK_STATE.planSources.find((item) => item.parameter === firstCondition.signal_parameter) || null;
 }
 
 function renderRuleSourceOptions(selectedKey = "") {
   if (!TASK_STATE.planSources.length) {
-    return `<option value="">${isZhLang() ? "请先到硬件配置里定义监测点" : "Set up a monitored point in Hardware Config first"}</option>`;
+    return `<option value="">${isZhLang() ? "请先到硬件配置里定义监测数据" : "Set up monitored data in Hardware Config first"}</option>`;
   }
   return TASK_STATE.planSources.map((source) => `
     <option value="${escapeHtml(source.key)}"${source.key === selectedKey ? " selected" : ""}>${escapeHtml(source.optionLabel)}</option>
@@ -292,7 +297,7 @@ function syncRuleSourceFields() {
     if ($("ruleFormSignalAddress")) $("ruleFormSignalAddress").value = "";
     if ($("ruleFormSignalParameter")) $("ruleFormSignalParameter").value = "";
     if ($("ruleFormMetricKey")) $("ruleFormMetricKey").value = "";
-    if ($("ruleFormSourceHint")) $("ruleFormSourceHint").textContent = isZhLang() ? "当前没有可选监测点，请先去硬件配置里完成定义。" : "No monitored point is available yet. Set one up in Hardware Config first.";
+    if ($("ruleFormSourceHint")) $("ruleFormSourceHint").textContent = isZhLang() ? "当前没有可选监测数据，请先去硬件配置里完成定义。" : "No monitored data is available yet. Set it up in Hardware Config first.";
     return null;
   }
 
@@ -307,6 +312,264 @@ function syncRuleSourceFields() {
       : "From Hardware Config; device and address are already included.";
   }
   return source;
+}
+
+function ruleConditionDefault(source = firstPlanSource()) {
+  return {
+    metric_key: source?.metricLabel || "pH",
+    signal_protocol: source?.protocol || "",
+    signal_address: source?.address ?? 1,
+    signal_parameter: source?.parameter || "",
+    aggregation: "avg",
+    window_sec: 60,
+    bucket_sec: 0,
+    bucket_count: 1,
+    bucket_agg: "avg",
+    pass_mode: "latest",
+    operator: ">",
+    threshold: 6.8,
+    requires_fresh_data: true
+  };
+}
+
+function legacyRuleCondition(rule) {
+  const source = findPlanSourceForRule(rule) || firstPlanSource();
+  const bucketSec = Number(rule?.bucket_sec || 0);
+  const bucketCount = Number(rule?.bucket_count || 1);
+  const bucketAgg = rule?.bucket_agg || rule?.aggregation || "last";
+  return {
+    metric_key: rule?.metric_key || source?.metricLabel || rule?.signal_parameter || "",
+    signal_protocol: rule?.signal_protocol || source?.protocol || "",
+    signal_address: Number(rule?.signal_address ?? source?.address ?? 0),
+    signal_parameter: rule?.signal_parameter || source?.parameter || "",
+    aggregation: bucketSec > 0 ? bucketAgg : (rule?.aggregation || "last"),
+    window_sec: Number(rule?.window_sec || 60),
+    bucket_sec: bucketSec,
+    bucket_count: bucketCount,
+    bucket_agg: bucketAgg,
+    pass_mode: rule?.pass_mode || (bucketSec > 0 && bucketCount > 1 ? "all" : "latest"),
+    operator: rule?.operator || ">",
+    threshold: rule?.threshold ?? "",
+    requires_fresh_data: rule?.requires_fresh_data !== false
+  };
+}
+
+function normalizeRuleConditions(rule) {
+  const raw = Array.isArray(rule?.conditions) && rule.conditions.length
+    ? rule.conditions
+    : [legacyRuleCondition(rule || ruleDefault())];
+  const out = raw.map((condition) => {
+    const source = findPlanSourceByKey(planSourceKey(condition.signal_protocol, condition.signal_address, condition.signal_parameter)) || firstPlanSource();
+    const bucketSec = Number(condition.bucket_sec || 0);
+    const bucketCount = Number(condition.bucket_count || 1);
+    const bucketAgg = condition.bucket_agg || condition.aggregation || "last";
+    return {
+      ...ruleConditionDefault(source),
+      ...condition,
+      metric_key: condition.metric_key || source?.metricLabel || condition.signal_parameter || "",
+      signal_address: Number(condition.signal_address ?? source?.address ?? 0),
+      aggregation: bucketSec > 0 ? bucketAgg : (condition.aggregation || "last"),
+      window_sec: Number(condition.window_sec || 60),
+      bucket_sec: bucketSec,
+      bucket_count: bucketCount,
+      bucket_agg: bucketAgg,
+      pass_mode: condition.pass_mode || (bucketSec > 0 && bucketCount > 1 ? "all" : "latest"),
+      threshold: condition.threshold ?? "",
+      requires_fresh_data: condition.requires_fresh_data !== false
+    };
+  }).filter((condition) => condition.signal_protocol && condition.signal_parameter);
+  return out.length ? out : [ruleConditionDefault()];
+}
+
+function conditionSourceKey(condition) {
+  return planSourceKey(condition?.signal_protocol, condition?.signal_address, condition?.signal_parameter);
+}
+
+function ruleConditionText(condition) {
+  const metric = metricLabel(condition.metric_key || condition.signal_parameter || "-");
+  return isZhLang()
+    ? `${metric} ${ruleValueModeSummary(condition)}，${operatorLabel(condition.operator || ">")} ${condition.threshold ?? "-"}`
+    : `${metric} ${ruleValueModeSummary(condition)} ${operatorLabel(condition.operator || ">")} ${condition.threshold ?? "-"}`;
+}
+
+function conditionPreviewText(condition) {
+  const metric = metricLabel(condition.metric_key || condition.signal_parameter || "-");
+  const valueMode = ruleValueModeSummary(condition);
+  const operator = operatorLabel(condition.operator || ">");
+  const threshold = condition.threshold ?? "-";
+  const coverage = conditionCoverageHint(condition);
+  return isZhLang()
+    ? `${metric}：${valueMode}，${operator} ${threshold}${coverage}`
+    : `${metric}: ${valueMode} ${operator} ${threshold}${coverage}`;
+}
+
+function conditionCoverageHint(condition) {
+  const bucketSec = Number(condition?.bucket_sec || 0);
+  const bucketCount = Number(condition?.bucket_count || 1);
+  if (bucketSec <= 0 || bucketCount <= 1) return "";
+  const total = bucketSec * bucketCount;
+  return isZhLang()
+    ? `（约连续 ${formatDuration(total)}）`
+    : ` (about ${formatDuration(total)} continuous)`;
+}
+
+function conditionContinuousCount(condition) {
+  const bucketCount = Number(condition?.bucket_count || 1);
+  const bucketSec = Number(condition?.bucket_sec || 0);
+  if (bucketSec > 0 && bucketCount > 1) return bucketCount;
+  return 1;
+}
+
+function ruleContinuousOptionLabel(count) {
+  const value = Number(count || 1);
+  if (isZhLang()) {
+    if (value <= 1) return "本次满足即可";
+    return `${value} 个粒度都满足`;
+  }
+  if (value <= 1) return "Current bucket only";
+  return `${value} consecutive buckets`;
+}
+
+function setRuleConditionFromSource(condition, source) {
+  if (!source) return condition;
+  return {
+    ...condition,
+    metric_key: source.metricLabel,
+    signal_protocol: source.protocol,
+    signal_address: source.address,
+    signal_parameter: source.parameter
+  };
+}
+
+function conditionDomId(index, field) {
+  return `ruleCond${index}${field}`;
+}
+
+function notifyPlanDraftChanged() {
+  if (typeof TASK_STATE.onPlanDraftChange === "function") TASK_STATE.onPlanDraftChange();
+}
+
+function readRuleConditionRows() {
+  const rows = Array.from(document.querySelectorAll("[data-rule-condition-index]"));
+  if (!rows.length) return TASK_STATE.ruleDraftConditions.length ? TASK_STATE.ruleDraftConditions : [ruleConditionDefault()];
+  const conditions = rows.map((row) => {
+    const index = Number(row.getAttribute("data-rule-condition-index"));
+    const source = findPlanSourceByKey($(conditionDomId(index, "Source"))?.value || "") || firstPlanSource();
+    const base = setRuleConditionFromSource(TASK_STATE.ruleDraftConditions[index] || ruleConditionDefault(source), source);
+    const windowSec = Number($(conditionDomId(index, "WindowSec"))?.value || base.window_sec || 60);
+    const aggregation = $(conditionDomId(index, "Aggregation"))?.value || "last";
+    const continuousCount = Number($(conditionDomId(index, "Continuous"))?.value || 1);
+    return {
+      ...base,
+      aggregation,
+      window_sec: windowSec,
+      bucket_sec: continuousCount > 1 ? windowSec : 0,
+      bucket_count: continuousCount,
+      bucket_agg: aggregation,
+      pass_mode: continuousCount > 1 ? "all" : "latest",
+      operator: $(conditionDomId(index, "Operator"))?.value || ">",
+      threshold: Number($(conditionDomId(index, "Threshold"))?.value || 0),
+      requires_fresh_data: $(conditionDomId(index, "Fresh"))?.checked !== false
+    };
+  });
+  TASK_STATE.ruleDraftConditions = conditions;
+  return conditions;
+}
+
+function updateRuleConditionPreviews() {
+  document.querySelectorAll("[data-rule-condition-index]").forEach((row) => {
+    const index = Number(row.getAttribute("data-rule-condition-index"));
+    const preview = row.querySelector(".task-condition-preview");
+    if (!preview) return;
+    preview.textContent = conditionPreviewText(TASK_STATE.ruleDraftConditions[index] || ruleConditionDefault());
+  });
+}
+
+function renderRuleConditionRows() {
+  const box = $("ruleConditionList");
+  if (!box) return;
+  const conditions = TASK_STATE.ruleDraftConditions.length ? TASK_STATE.ruleDraftConditions : [ruleConditionDefault()];
+  TASK_STATE.ruleDraftConditions = conditions;
+  box.innerHTML = conditions.map((condition, index) => {
+    const selectedSource = conditionSourceKey(condition);
+    const continuousCount = conditionContinuousCount(condition);
+    return `
+      <div class="rule-condition-row" data-rule-condition-index="${index}">
+        <div class="rule-condition-head">
+          <strong>${isZhLang() ? `条件 ${index + 1}` : `Condition ${index + 1}`}</strong>
+          ${conditions.length > 1 ? `<button class="btn btn-pill task-secondary-action rule-condition-remove" type="button" data-remove-condition="${index}">${isZhLang() ? "删除" : "Remove"}</button>` : ""}
+        </div>
+        <div class="task-section-grid task-plan-grid-trigger">
+          <label class="ac-wide">${isZhLang() ? "监测数据" : "Monitored data"}<select id="${conditionDomId(index, "Source")}" class="input">${renderRuleSourceOptions(selectedSource)}</select></label>
+          <label>${isZhLang() ? "数据粒度" : "Data granularity"}
+            <select id="${conditionDomId(index, "WindowSec")}" class="input">
+              ${renderRuleWindowOptions(condition.window_sec ?? 60)}
+            </select>
+          </label>
+          <label>${isZhLang() ? "取值" : "Value"}
+            <select id="${conditionDomId(index, "Aggregation")}" class="input">
+              <option value="last"${condition.aggregation === "last" ? " selected" : ""}>${isZhLang() ? "最近入库值" : "Latest stored value"}</option>
+              <option value="avg"${condition.aggregation === "avg" ? " selected" : ""}>${isZhLang() ? "平均值" : "Average"}</option>
+              <option value="min"${condition.aggregation === "min" ? " selected" : ""}>${isZhLang() ? "最低值" : "Minimum"}</option>
+              <option value="max"${condition.aggregation === "max" ? " selected" : ""}>${isZhLang() ? "最高值" : "Maximum"}</option>
+            </select>
+          </label>
+          <label>${isZhLang() ? "连续几次" : "Consecutive"}
+            <select id="${conditionDomId(index, "Continuous")}" class="input">
+              <option value="1"${continuousCount === 1 ? " selected" : ""}>${escapeHtml(ruleContinuousOptionLabel(1))}</option>
+              <option value="2"${continuousCount === 2 ? " selected" : ""}>${escapeHtml(ruleContinuousOptionLabel(2))}</option>
+              <option value="3"${continuousCount === 3 ? " selected" : ""}>${escapeHtml(ruleContinuousOptionLabel(3))}</option>
+              <option value="5"${continuousCount === 5 ? " selected" : ""}>${escapeHtml(ruleContinuousOptionLabel(5))}</option>
+              <option value="6"${continuousCount === 6 ? " selected" : ""}>${escapeHtml(ruleContinuousOptionLabel(6))}</option>
+              <option value="10"${continuousCount === 10 ? " selected" : ""}>${escapeHtml(ruleContinuousOptionLabel(10))}</option>
+              <option value="12"${continuousCount === 12 ? " selected" : ""}>${escapeHtml(ruleContinuousOptionLabel(12))}</option>
+            </select>
+          </label>
+          <label>${isZhLang() ? "条件" : "Condition"}
+            <select id="${conditionDomId(index, "Operator")}" class="input">
+              <option value=">"${condition.operator === ">" ? " selected" : ""}>${isZhLang() ? "大于" : "above"}</option>
+              <option value=">="${condition.operator === ">=" ? " selected" : ""}>${isZhLang() ? "大于等于" : "at least"}</option>
+              <option value="<"${condition.operator === "<" ? " selected" : ""}>${isZhLang() ? "小于" : "below"}</option>
+              <option value="<="${condition.operator === "<=" ? " selected" : ""}>${isZhLang() ? "小于等于" : "at most"}</option>
+            </select>
+          </label>
+          <label>${isZhLang() ? "设定值" : "Set value"}<input id="${conditionDomId(index, "Threshold")}" class="input" type="number" step="0.01" value="${escapeHtml(condition.threshold ?? "")}" /></label>
+        </div>
+        <div class="task-condition-preview">${escapeHtml(conditionPreviewText(condition))}</div>
+      </div>
+    `;
+  }).join("");
+
+  box.querySelectorAll("select, input").forEach((el) => {
+    const eventName = el.tagName === "SELECT" ? "change" : "input";
+    el.addEventListener(eventName, () => {
+      readRuleConditionRows();
+      renderRuleSummaryDraft();
+      updateRuleConditionPreviews();
+      notifyPlanDraftChanged();
+    });
+  });
+
+  box.querySelectorAll("[data-remove-condition]").forEach((btn) => {
+    btn.onclick = () => {
+      const index = Number(btn.getAttribute("data-remove-condition"));
+      TASK_STATE.ruleDraftConditions.splice(index, 1);
+      if (!TASK_STATE.ruleDraftConditions.length) TASK_STATE.ruleDraftConditions = [ruleConditionDefault()];
+      renderRuleConditionRows();
+      renderRuleSummaryDraft();
+      notifyPlanDraftChanged();
+    };
+  });
+
+  if ($("btnRuleAddCondition")) {
+    $("btnRuleAddCondition").onclick = () => {
+      readRuleConditionRows();
+      TASK_STATE.ruleDraftConditions.push(ruleConditionDefault());
+      renderRuleConditionRows();
+      renderRuleSummaryDraft();
+      notifyPlanDraftChanged();
+    };
+  }
 }
 
 function taskNameById(id) {
@@ -370,7 +633,10 @@ function logMessageLabel(message) {
         "Rule is disabled": "规则已停用",
         "Task is running": "任务正在运行",
         "No recent data": "没有最近数据",
+        "No sensor data available": "没有监测数据",
+        "Sensor data is stale": "数据已过期",
         "Rule conditions not met": "规则条件未满足",
+        "Threshold is not matched": "条件未满足",
         "Cooldown is active": "还在等待再次执行"
       }
     : {
@@ -384,7 +650,10 @@ function logMessageLabel(message) {
         "Rule is disabled": "Rule is disabled",
         "Task is running": "Task is running",
         "No recent data": "No recent data",
+        "No sensor data available": "No sensor data available",
+        "Sensor data is stale": "Sensor data is stale",
         "Rule conditions not met": "Rule conditions not met",
+        "Threshold is not matched": "Condition not met",
         "Cooldown is active": "Cooldown is active"
       };
   if (exactMap[message]) return exactMap[message];
@@ -433,8 +702,21 @@ function planHeadBadgesV2(kind, item) {
   if (!item) return "";
   return `
     ${badge(planKindLabel(kind), "neutral")}
-    ${badge(isZhLang() ? "已保存" : "Saved", "ok")}
+    <span id="planSaveStateBadge" class="task-badge ok">${escapeHtml(isZhLang() ? "已保存" : "Saved")}</span>
+    <span id="planDraftNote" class="task-draft-note" hidden>${escapeHtml(isZhLang() ? "保存后生效" : "Save to apply")}</span>
   `;
+}
+
+function planEnableLabelText(enabled) {
+  if (isZhLang()) return enabled ? "已启用" : "已停用";
+  return enabled ? "Enabled" : "Disabled";
+}
+
+function syncPlanEnableLabel(kind) {
+  const enableId = kind === "rule" ? "ruleFormEnabled" : "scheduleFormEnabled";
+  const enableInput = $(enableId);
+  const label = $("planEnableLabel");
+  if (enableInput && label) label.textContent = planEnableLabelText(enableInput.checked);
 }
 
 function simulationLabel() {
@@ -459,38 +741,76 @@ function automationEnabledLabel(automation) {
 
 function automationModeLabel(automation) {
   if (automation?.dry_run !== false) return simulationLabel();
-  if (automation?.hardware_armed) return isZhLang() ? "\u5df2\u5141\u8bb8" : "Allowed";
-  return isZhLang() ? "\u672a\u6388\u6743" : "Not armed";
+  if (automation?.hardware_armed) return isZhLang() ? "已放行" : "Released";
+  return isZhLang() ? "已锁定" : "Locked";
 }
 
 function planRunStateLabel(automation) {
   return automation?.automation_enabled ? (isZhLang() ? "\u5f00\u542f" : "On") : (isZhLang() ? "\u5173\u95ed" : "Off");
 }
 
+function hardwareOutputReleased() {
+  const automation = TASK_STATE.summary?.automation || {};
+  return automation.dry_run === false && automation.hardware_armed === true;
+}
+
+function hardwareLockedText() {
+  return isZhLang()
+    ? "输出已锁定。先放行输出，再执行一次。"
+    : "Output is locked. Release output before running once.";
+}
+
 function statusJoin(parts) {
   return parts.filter(Boolean).join(isZhLang() ? "\uff1b" : " | ");
 }
 
+function formatStatusNumber(value) {
+  if (value == null || value === "") return "-";
+  const num = Number(value);
+  if (!Number.isFinite(num)) return String(value);
+  return String(Number(num.toFixed(3)));
+}
+
 function ruleEvaluationStatusText(res) {
-  const state = res.can_fire
-    ? (isZhLang() ? "当前满足，可以执行" : "Ready to run")
-    : (res.matched ? (isZhLang() ? "数值满足，但仍受保护限制" : "Value matched, limited") : (isZhLang() ? "当前不满足" : "Not matched"));
-  const valueText = `${isZhLang() ? "当前值" : "Current"} ${res.current_value ?? "-"}`;
+  const reason = res.message || "";
+  let state = "";
+  if (res.can_fire) {
+    state = isZhLang() ? "参数条件满足，可以执行" : "Parameter conditions met; ready to run";
+  } else if (reason === "Rule is disabled") {
+    state = res.matched
+      ? (isZhLang() ? "参数条件满足；但计划已停用" : "Parameter conditions met; plan is disabled")
+      : (isZhLang() ? "计划已停用；参数条件未满足" : "Plan is disabled; parameter conditions are not met");
+  } else if (reason === "Outside active window") {
+    state = res.matched
+      ? (isZhLang() ? "参数条件满足；但当前不在允许执行时间" : "Parameter conditions met; outside allowed time")
+      : (isZhLang() ? "当前不在允许执行时间；参数条件未满足" : "Outside allowed time; parameter conditions are not met");
+  } else if (reason === "No sensor data available" || reason === "No recent data") {
+    state = isZhLang() ? "没有可用监测数据" : "No monitored data available";
+  } else if (reason === "Sensor data is stale") {
+    state = isZhLang() ? "监测数据已过期" : "Monitored data is stale";
+  } else if (res.matched) {
+    state = isZhLang() ? "参数条件满足；但暂时不会执行" : "Parameter conditions met; not running yet";
+  } else {
+    state = isZhLang() ? "参数条件未满足" : "Parameter conditions are not met";
+  }
+  const countText = Number(res.condition_count || 0) > 1
+    ? `${isZhLang() ? "已满足" : "Matched"} ${res.matched_count || 0}/${res.condition_count}`
+    : `${isZhLang() ? "当前值" : "Current value"} ${formatStatusNumber(res.current_value)}`;
   const freshnessText = res.freshness_sec == null
     ? (isZhLang() ? "没有最近数据" : "No recent data")
-    : `${isZhLang() ? "数据距今" : "Data age"} ${Math.round(res.freshness_sec)}s`;
+    : `${isZhLang() ? "最近入库" : "Data age"} ${Math.round(res.freshness_sec)}s`;
   const limitFlags = [];
   if (res.cooldown_ready === false) limitFlags.push(isZhLang() ? "还没到再次执行间隔" : "waiting for run gap");
   if (res.hourly_ready === false) limitFlags.push(isZhLang() ? "已到本小时次数上限" : "hourly limit reached");
   const limitText = limitFlags.length
     ? `${isZhLang() ? "限制：" : "Limits: "}${limitFlags.join(isZhLang() ? "，" : ", ")}`
-    : `${isZhLang() ? "保护限制正常" : "Limits OK"}`;
-  return statusJoin([state, valueText, freshnessText, limitText]);
+    : "";
+  return statusJoin([state, countText, freshnessText, limitText]);
 }
 
 function planTypeSwitchLabel(kind) {
   return kind === "rule"
-    ? (isZhLang() ? "参数" : "Parameter")
+    ? (isZhLang() ? "参数触发" : "Parameter")
     : (isZhLang() ? "时间" : "Time");
 }
 
@@ -516,14 +836,18 @@ function sectionTitle(label, helpText) {
   `;
 }
 
+function clearPlanStatusMessages() {
+  TASK_STATE.status.rules = "";
+  TASK_STATE.status.schedules = "";
+  TASK_STATE.statusTone.rules = "";
+  TASK_STATE.statusTone.schedules = "";
+}
+
 function setPlanSelection(kind, id = "") {
   TASK_STATE.selectedPlanKind = kind;
   TASK_STATE.draftPlanKind = id ? "" : kind;
   if (id) {
-    TASK_STATE.status.rules = "";
-    TASK_STATE.status.schedules = "";
-    TASK_STATE.statusTone.rules = "";
-    TASK_STATE.statusTone.schedules = "";
+    clearPlanStatusMessages();
   }
   if (kind === "rule") {
     TASK_STATE.selectedRuleId = id;
@@ -558,23 +882,27 @@ function ensurePlanSelection() {
   }
   if (TASK_STATE.selectedPlanKind === "schedule" && TASK_STATE.schedules[0]) {
     TASK_STATE.selectedScheduleId = TASK_STATE.schedules[0].id;
+    clearPlanStatusMessages();
     saveTaskUiState();
     return;
   }
   if (TASK_STATE.selectedPlanKind === "rule" && TASK_STATE.rules[0]) {
     TASK_STATE.selectedRuleId = TASK_STATE.rules[0].id;
+    clearPlanStatusMessages();
     saveTaskUiState();
     return;
   }
   if (TASK_STATE.schedules[0]) {
     TASK_STATE.selectedPlanKind = "schedule";
     TASK_STATE.selectedScheduleId = TASK_STATE.schedules[0].id;
+    clearPlanStatusMessages();
     saveTaskUiState();
     return;
   }
   if (TASK_STATE.rules[0]) {
     TASK_STATE.selectedPlanKind = "rule";
     TASK_STATE.selectedRuleId = TASK_STATE.rules[0].id;
+    clearPlanStatusMessages();
     saveTaskUiState();
   }
 }
@@ -589,20 +917,14 @@ function cancelPlanDraft(kind) {
   if (restoreKind === "rule" && restoreId && TASK_STATE.rules.some((item) => item.id === restoreId)) {
     TASK_STATE.selectedPlanKind = "rule";
     TASK_STATE.selectedRuleId = restoreId;
-    TASK_STATE.status.rules = "";
-    TASK_STATE.status.schedules = "";
-    TASK_STATE.statusTone.rules = "";
-    TASK_STATE.statusTone.schedules = "";
+    clearPlanStatusMessages();
     saveTaskUiState();
     return;
   }
   if (restoreKind === "schedule" && restoreId && TASK_STATE.schedules.some((item) => item.id === restoreId)) {
     TASK_STATE.selectedPlanKind = "schedule";
     TASK_STATE.selectedScheduleId = restoreId;
-    TASK_STATE.status.rules = "";
-    TASK_STATE.status.schedules = "";
-    TASK_STATE.statusTone.rules = "";
-    TASK_STATE.statusTone.schedules = "";
+    clearPlanStatusMessages();
     saveTaskUiState();
     return;
   }
@@ -697,33 +1019,76 @@ function ruleWindowSeconds(value, unit) {
   return amount;
 }
 
+function ruleWindowOptions() {
+  return [
+    [10, isZhLang() ? "10 秒" : "10 s"],
+    [60, isZhLang() ? "1 分钟" : "1 min"],
+    [600, isZhLang() ? "10 分钟" : "10 min"],
+    [3600, isZhLang() ? "1 小时" : "1 h"]
+  ];
+}
+
+function renderRuleWindowOptions(selectedSeconds) {
+  const selected = Number(selectedSeconds || 60);
+  const options = ruleWindowOptions();
+  const hasSelected = options.some(([value]) => value === selected);
+  const html = options.map(([value, label]) => (
+    `<option value="${value}"${selected === value ? " selected" : ""}>${escapeHtml(label)}</option>`
+  ));
+  if (!hasSelected) {
+    html.push(`<option value="${selected}" selected>${escapeHtml(formatDuration(selected))}</option>`);
+  }
+  return html.join("");
+}
+
 function ruleAggregationNeedsWindow(aggregation) {
   return String(aggregation || "last") !== "last";
 }
 
 function ruleAggregationOptionLabel(aggregation) {
   const map = {
-    last: isZhLang() ? "只看最新一次读数" : "Latest reading only",
-    avg: isZhLang() ? "看最近一段时间的平均值" : "Average over a recent period",
-    min: isZhLang() ? "看最近一段时间的最低值" : "Lowest value in a recent period",
-    max: isZhLang() ? "看最近一段时间的最高值" : "Highest value in a recent period"
+    last: isZhLang() ? "最近入库值" : "Latest stored value",
+    avg: isZhLang() ? "平均值" : "Average",
+    min: isZhLang() ? "最低值" : "Minimum",
+    max: isZhLang() ? "最高值" : "Maximum"
   };
   return map[aggregation] || aggregation;
 }
 
 function ruleValueModeSummary(rule) {
   const aggregation = String(rule?.aggregation || "last");
+  const bucketSec = Number(rule?.bucket_sec || 0);
+  const bucketCount = Number(rule?.bucket_count || 1);
+  if (bucketSec > 0) {
+    const durationText = formatDuration(bucketSec);
+    const valueText = ruleAggregationOptionLabel(rule?.bucket_agg || aggregation);
+    const passText = bucketCount > 1
+      ? (isZhLang() ? `连续 ${bucketCount} 个粒度` : `${bucketCount} consecutive buckets`)
+      : "";
+    return isZhLang()
+      ? `${durationText}${valueText}${passText ? `，${passText}` : ""}`
+      : `${durationText} ${valueText}${passText ? `, ${passText}` : ""}`;
+  }
   if (!ruleAggregationNeedsWindow(aggregation)) {
     return ruleAggregationOptionLabel(aggregation);
   }
   const durationText = formatDuration(rule?.window_sec || 60);
-  if (isZhLang()) return `${ruleAggregationOptionLabel(aggregation)}（最近 ${durationText}）`;
-  return `${ruleAggregationOptionLabel(aggregation)} (${durationText})`;
+  if (isZhLang()) return `最近 ${durationText}${ruleAggregationOptionLabel(aggregation)}`;
+  return `${ruleAggregationOptionLabel(aggregation)} over ${durationText}`;
 }
 
 function compactRuleValueModeLabel(rule) {
   const aggregation = String(rule?.aggregation || "last");
-  if (aggregation === "last") return isZhLang() ? "当前值" : "Latest";
+  const bucketSec = Number(rule?.bucket_sec || 0);
+  const bucketCount = Number(rule?.bucket_count || 1);
+  if (bucketSec > 0) {
+    const durationText = formatDuration(bucketSec);
+    const valueText = ruleAggregationOptionLabel(rule?.bucket_agg || aggregation);
+    return bucketCount > 1
+      ? (isZhLang() ? `${durationText}${valueText}，连续${bucketCount}个粒度` : `${durationText} ${valueText} x${bucketCount}`)
+      : (isZhLang() ? `${durationText}${valueText}` : `${durationText} ${valueText}`);
+  }
+  if (aggregation === "last") return isZhLang() ? "最近入库值" : "Latest stored value";
   const durationText = formatDuration(rule?.window_sec || 60);
   const map = {
     avg: isZhLang() ? `${durationText}平均值` : `${durationText} average`,
@@ -876,15 +1241,12 @@ function taskStatusBadges(task) {
 
 function ruleSummary(rule) {
   if (!rule) return "-";
-  const metric = metricLabel(rule.metric_key || rule.signal_parameter || "-");
-  const operator = operatorLabel(rule.operator || ">");
-  const threshold = rule.threshold ?? "-";
-  const sustain = Number(rule.sustain_sec || 0);
   const taskName = taskNameById(rule.task_id);
+  const conditionText = normalizeRuleConditions(rule).map(ruleConditionText).join(isZhLang() ? "；且 " : "; and ");
   if (isZhLang()) {
-    return `${ruleValueModeSummary(rule)}判断 ${metric} ${operator} ${threshold}${sustain ? `，连续满足 ${formatDuration(sustain)}` : ""}后执行 ${taskName}；${activeWindowSummary(rule)}`;
+    return `${conditionText} 后执行 ${taskName}；${activeWindowSummary(rule)}`;
   }
-  return `${ruleValueModeSummary(rule)}: ${metric} ${operator} ${threshold}${sustain ? ` for ${formatDuration(sustain)}` : ""}, run ${taskName}; ${activeWindowSummary(rule)}`;
+  return `${conditionText}, run ${taskName}; ${activeWindowSummary(rule)}`;
 }
 
 function operatorLabel(operator) {
@@ -899,10 +1261,10 @@ function operatorLabel(operator) {
 
 function aggregationLabel(aggregation) {
   const map = {
-    last: isZhLang() ? "当前最新值" : "latest reading",
-    avg: isZhLang() ? "最近时段平均值" : "average over window",
-    min: isZhLang() ? "最近时段最低值" : "minimum over window",
-    max: isZhLang() ? "最近时段最高值" : "maximum over window"
+    last: isZhLang() ? "最近入库值" : "latest stored value",
+    avg: isZhLang() ? "平均值" : "average",
+    min: isZhLang() ? "最低值" : "minimum",
+    max: isZhLang() ? "最高值" : "maximum"
   };
   return map[aggregation] || aggregation;
 }
@@ -948,16 +1310,15 @@ function scheduleSummary(schedule) {
 
 function compactRuleSummary(rule) {
   if (!rule) return "-";
-  const metric = metricLabel(rule.metric_key || rule.signal_parameter || "-");
-  const operator = operatorLabel(rule.operator || ">");
-  const threshold = rule.threshold ?? "-";
-  const sustain = Number(rule.sustain_sec || 0);
   const taskName = taskNameById(rule.task_id);
-  const valueMode = `${compactRuleValueModeLabel(rule)} `;
+  const conditionText = normalizeRuleConditions(rule).map((condition) => {
+    const metric = metricLabel(condition.metric_key || condition.signal_parameter || "-");
+    return `${metric} ${compactRuleValueModeLabel(condition)} ${operatorLabel(condition.operator || ">")} ${condition.threshold ?? "-"}`;
+  }).join(isZhLang() ? " 且 " : " and ");
   if (isZhLang()) {
-    return `${valueMode}${metric} ${operator} ${threshold}${sustain ? `，持续 ${formatDuration(sustain)}` : ""} -> ${taskName}${compactActiveWindowSuffix(rule)}`;
+    return `${conditionText} -> ${taskName}${compactActiveWindowSuffix(rule)}`;
   }
-  return `${valueMode}${metric} ${operator} ${threshold}${sustain ? ` for ${formatDuration(sustain)}` : ""} -> ${taskName}${compactActiveWindowSuffix(rule)}`;
+  return `${conditionText} -> ${taskName}${compactActiveWindowSuffix(rule)}`;
 }
 
 function compactScheduleSummary(schedule) {
@@ -984,9 +1345,37 @@ function planListSummaryV2(item) {
   return item.kind === "rule" ? compactRuleSummary(item) : compactScheduleSummary(item);
 }
 
+function planItemBriefV2(item) {
+  if (!item) return "-";
+  if (item.kind === "rule") {
+    const conditions = normalizeRuleConditions(item);
+    if (conditions.length > 1) {
+      return isZhLang() ? `${conditions.length} 条条件全部满足` : `${conditions.length} conditions required`;
+    }
+    return conditions[0] ? ruleConditionText(conditions[0]) : (isZhLang() ? "未设置条件" : "No condition");
+  }
+  if (item.schedule_type === "once") {
+    return item.start_at ? item.start_at.replace("T", " ") : (isZhLang() ? "单次执行" : "Once");
+  }
+  if (item.schedule_type === "interval") {
+    return isZhLang() ? `每隔 ${formatDuration(item.interval_sec || 0)}` : `Every ${formatDuration(item.interval_sec || 0)}`;
+  }
+  return isZhLang() ? `每天 ${item.time_of_day || "--:--"}` : `Daily ${item.time_of_day || "--:--"}`;
+}
+
+function planItemStatusBadgeV2(item) {
+  if (!item) return "";
+  if (item.enabled === false) return badge(isZhLang() ? "停用" : "Off", "muted");
+  const tone = planCardToneV2(item.kind, item);
+  const label = item.kind === "rule"
+    ? (isZhLang() ? "参数" : "Parameter")
+    : (isZhLang() ? "时间" : "Time");
+  return badge(label, tone === "ok" ? "ok" : (tone === "warn" ? "warn" : "neutral"));
+}
+
 function taskExecutionSummary(taskId) {
   const task = TASK_STATE.tasks.find((item) => item.id === taskId);
-  if (!task) return isZhLang() ? "未选择动作。" : "No action selected.";
+  if (!task) return isZhLang() ? "未选择执行内容。" : "No run target selected.";
   const steps = (task.steps || []).map((step) => {
     if (step.step_type === "wait") return isZhLang() ? `等待 ${formatDurationMs(step.duration_ms)}` : `wait ${formatDurationMs(step.duration_ms)}`;
     return actionUnitNameById(step.action_unit_id || "");
@@ -1024,12 +1413,12 @@ function scheduleTimingSummary(schedule) {
 }
 
 function ruleTriggerSummary(rule) {
-  const metric = metricLabel(rule.metric_key || rule.signal_parameter || "-");
-  const mode = ruleValueModeSummary(rule);
-  const base = `${mode} · ${metric} ${operatorLabel(rule.operator || ">")} ${rule.threshold ?? "-"}`;
-  return Number(rule.sustain_sec || 0) > 0
-    ? `${base} · ${isZhLang() ? `持续 ${formatDuration(rule.sustain_sec)}` : `hold ${formatDuration(rule.sustain_sec)}`}`
-    : base;
+  const conditions = normalizeRuleConditions(rule);
+  const text = conditions.map(ruleConditionText).join(isZhLang() ? "；且 " : "; and ");
+  if (conditions.length > 1) {
+    return isZhLang() ? `全部满足：${text}` : `All conditions: ${text}`;
+  }
+  return text;
 }
 
 function renderDraftSummaryHtml(facts) {
@@ -1046,8 +1435,8 @@ function editorSwitchHintText() {
 
 function ruleActionNote() {
   return isZhLang()
-    ? "保存只会更新配置，不会立刻执行。现在检查只看当前条件是否满足；手动执行动作会直接运行一次选定动作。"
-    : "Save only updates the configuration. Check Now only evaluates the condition; Run Action manually runs the selected action once.";
+    ? "保存只会更新配置，不会立刻执行。判断当前数据只看此刻是否满足；立即执行一次会直接运行选定内容。"
+    : "Save only updates the configuration. Test condition only evaluates current data; Run plan once manually runs the selected item once.";
 }
 
 function scheduleActionNote() {
@@ -1090,15 +1479,12 @@ function scheduleStatusBadges(schedule) {
 
 function friendlyRuleSummary(rule) {
   if (!rule) return "-";
-  const metric = metricLabel(rule.metric_key || rule.signal_parameter || "-");
-  const operator = operatorLabel(rule.operator || ">");
-  const threshold = rule.threshold ?? "-";
-  const sustain = Number(rule.sustain_sec || 0);
   const taskName = taskNameById(rule.task_id);
+  const conditionText = normalizeRuleConditions(rule).map(ruleConditionText).join(isZhLang() ? "；且 " : "; and ");
   if (isZhLang()) {
-    return `${ruleValueModeSummary(rule)} · ${metric} ${operator} ${threshold}${sustain ? ` · 持续 ${formatDuration(sustain)}` : ""} · 执行 ${taskName} · ${activeWindowSummary(rule)}`;
+    return `${conditionText} · 执行 ${taskName} · ${activeWindowSummary(rule)}`;
   }
-  return `${ruleValueModeSummary(rule)} · ${metric} ${operator} ${threshold}${sustain ? ` · hold ${formatDuration(sustain)}` : ""} · run ${taskName} · ${activeWindowSummary(rule)}`;
+  return `${conditionText} · run ${taskName} · ${activeWindowSummary(rule)}`;
 }
 
 function friendlyScheduleSummary(schedule) {
@@ -1137,28 +1523,59 @@ function taskDefault() {
 function ruleDefault() {
   const task = TASK_STATE.tasks[0];
   const source = firstPlanSource();
+  const condition = ruleConditionDefault(source);
   return {
     id: "new_rule",
     name: isZhLang() ? "新的参数触发计划" : "New parameter plan",
     enabled: false,
-    metric_key: source?.metricLabel || "pH",
-    signal_protocol: source?.protocol || "",
-    signal_address: source?.address ?? 1,
-    signal_parameter: source?.parameter || "",
-    aggregation: "last",
-    window_sec: 60,
-    operator: ">",
-    threshold: 6.8,
-    sustain_sec: 30,
+    metric_key: condition.metric_key,
+    signal_protocol: condition.signal_protocol,
+    signal_address: condition.signal_address,
+    signal_parameter: condition.signal_parameter,
+    aggregation: condition.aggregation,
+    window_sec: condition.window_sec,
+    bucket_sec: condition.bucket_sec,
+    bucket_count: condition.bucket_count,
+    bucket_agg: condition.bucket_agg,
+    pass_mode: condition.pass_mode,
+    operator: condition.operator,
+    threshold: condition.threshold,
+    conditions: [condition],
+    condition_logic: "all",
+    sustain_sec: 0,
     task_id: task?.id || "",
     cooldown_sec: 600,
     max_runs_per_hour: 4,
-    requires_fresh_data: true,
+    requires_fresh_data: condition.requires_fresh_data,
     active_days: activeDaysDefault(),
     active_start_time: "",
     active_end_time: "",
     description: ""
   };
+}
+
+function generatedPlanId(kind) {
+  const prefix = kind === "rule" ? "rule" : "schedule";
+  const existing = new Set([
+    ...TASK_STATE.rules.map((item) => item.id),
+    ...TASK_STATE.schedules.map((item) => item.id)
+  ]);
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const suffix = `${Date.now().toString(36)}_${Math.floor(Math.random() * 0xffff).toString(36)}`;
+    const id = `${prefix}_${suffix}`;
+    if (!existing.has(id)) return id;
+  }
+  return `${prefix}_${Date.now().toString(36)}`;
+}
+
+function ensurePlanFormId(inputId, kind) {
+  const input = $(inputId);
+  if (!input) return generatedPlanId(kind);
+  const current = input.value.trim();
+  if (current && !current.startsWith("new_")) return current;
+  const next = generatedPlanId(kind);
+  input.value = next;
+  return next;
 }
 
 function scheduleDefault() {
@@ -1301,55 +1718,58 @@ function renderTaskSummaryDraft() {
 
 function fillRuleForm(rule) {
   const data = rule || ruleDefault();
-  const preferredSource = findPlanSourceForRule(data) || firstPlanSource();
-  const windowParts = ruleWindowParts(data.window_sec ?? 60);
+  TASK_STATE.ruleDraftConditions = normalizeRuleConditions(data);
+  const firstCondition = TASK_STATE.ruleDraftConditions[0] || ruleConditionDefault();
   $("ruleFormId").value = data.id || "";
   $("ruleFormName").value = planName("rule", data);
-  $("ruleFormMetricKey").value = data.metric_key || "";
-  $("ruleFormSourceKey").innerHTML = renderRuleSourceOptions(preferredSource?.key || planSourceKey(data.signal_protocol, data.signal_address, data.signal_parameter));
-  $("ruleFormAggregation").value = data.aggregation || "last";
-  if ($("ruleFormWindowValue")) $("ruleFormWindowValue").value = windowParts.value;
-  if ($("ruleFormWindowUnit")) $("ruleFormWindowUnit").value = windowParts.unit;
-  if ($("ruleFormWindowSec")) $("ruleFormWindowSec").value = data.window_sec ?? 60;
-  $("ruleFormOperator").value = data.operator || ">";
-  $("ruleFormThreshold").value = data.threshold ?? "";
-  $("ruleFormSustainSec").value = data.sustain_sec ?? 30;
+  if ($("ruleFormMetricKey")) $("ruleFormMetricKey").value = firstCondition.metric_key || "";
+  if ($("ruleFormSignalProtocol")) $("ruleFormSignalProtocol").value = firstCondition.signal_protocol || "";
+  if ($("ruleFormSignalAddress")) $("ruleFormSignalAddress").value = firstCondition.signal_address ?? "";
+  if ($("ruleFormSignalParameter")) $("ruleFormSignalParameter").value = firstCondition.signal_parameter || "";
+  if ($("ruleFormSustainSec")) {
+    $("ruleFormSustainSec").value = $("ruleFormSustainSec").type === "hidden" ? 0 : (data.sustain_sec ?? 0);
+  }
   $("ruleFormTaskId").innerHTML = listOptions(TASK_STATE.tasks, (item) => item.id, (item) => taskOptionLabel(item), data.task_id || "");
   $("ruleFormTaskId").value = data.task_id || "";
   $("ruleFormCooldownSec").value = data.cooldown_sec ?? 600;
   $("ruleFormMaxRunsPerHour").value = data.max_runs_per_hour ?? 4;
   $("ruleFormEnabled").checked = data.enabled === true;
-  $("ruleFormFreshData").checked = data.requires_fresh_data !== false;
   if ($("ruleFormDryRun")) $("ruleFormDryRun").checked = true;
   $("ruleFormActiveStart").value = data.active_start_time || "";
   $("ruleFormActiveEnd").value = data.active_end_time || "";
   $("ruleFormDescription").value = data.description || "";
-  syncRuleSourceFields();
-  syncRuleValueModeUi();
+  renderRuleConditionRows();
   renderRuleSummaryDraft();
 }
 
 function readRuleForm() {
-  const source = syncRuleSourceFields();
+  const conditions = readRuleConditionRows();
+  const firstCondition = conditions[0] || ruleConditionDefault();
+  const sustainInput = $("ruleFormSustainSec");
+  const sustainSec = sustainInput && sustainInput.type !== "hidden" ? Number(sustainInput.value || 0) : 0;
   return {
-    id: $("ruleFormId").value.trim(),
+    id: ensurePlanFormId("ruleFormId", "rule"),
     name: $("ruleFormName").value.trim(),
-    metric_key: $("ruleFormMetricKey").value.trim() || source?.metricLabel || $("ruleFormSignalParameter").value.trim(),
-    signal_protocol: $("ruleFormSignalProtocol").value.trim(),
-    signal_address: Number($("ruleFormSignalAddress").value || 0),
-    signal_parameter: $("ruleFormSignalParameter").value.trim(),
-    aggregation: $("ruleFormAggregation").value,
-    window_sec: $("ruleFormWindowValue") && $("ruleFormWindowUnit")
-      ? ruleWindowSeconds($("ruleFormWindowValue").value, $("ruleFormWindowUnit").value)
-      : Number($("ruleFormWindowSec")?.value || 60),
-    operator: $("ruleFormOperator").value,
-    threshold: Number($("ruleFormThreshold").value),
-    sustain_sec: Number($("ruleFormSustainSec").value || 0),
+    metric_key: firstCondition.metric_key || firstCondition.signal_parameter,
+    signal_protocol: firstCondition.signal_protocol,
+    signal_address: Number(firstCondition.signal_address || 0),
+    signal_parameter: firstCondition.signal_parameter,
+    aggregation: firstCondition.aggregation,
+    window_sec: Number(firstCondition.window_sec || 60),
+    bucket_sec: Number(firstCondition.bucket_sec || 0),
+    bucket_count: Number(firstCondition.bucket_count || 1),
+    bucket_agg: firstCondition.bucket_agg || firstCondition.aggregation,
+    pass_mode: firstCondition.pass_mode || "latest",
+    operator: firstCondition.operator,
+    threshold: Number(firstCondition.threshold || 0),
+    requires_fresh_data: firstCondition.requires_fresh_data !== false,
+    condition_logic: "all",
+    conditions,
+    sustain_sec: sustainSec,
     task_id: $("ruleFormTaskId").value,
     cooldown_sec: Number($("ruleFormCooldownSec").value || 0),
     max_runs_per_hour: Number($("ruleFormMaxRunsPerHour").value || 0),
     enabled: $("ruleFormEnabled").checked,
-    requires_fresh_data: $("ruleFormFreshData").checked,
     active_days: readActiveDays("rule"),
     active_start_time: $("ruleFormActiveStart").value,
     active_end_time: $("ruleFormActiveEnd").value,
@@ -1366,7 +1786,7 @@ function syncRuleValueModeUi() {
   if (hint) {
     hint.textContent = showWindow
       ? (isZhLang() ? "按最近这段时间的读数来判断。" : "Uses readings from the recent period.")
-      : (isZhLang() ? "只看最新一次读数。" : "Uses the latest reading only.");
+      : (isZhLang() ? "使用最近入库值。" : "Uses the latest stored value.");
   }
 }
 
@@ -1376,7 +1796,7 @@ function renderRuleSummaryDraft() {
   const draft = readRuleForm();
   box.innerHTML = renderDraftSummaryHtml([
     planSummaryFact(isZhLang() ? "触发" : "Trigger", ruleTriggerSummary(draft)),
-    planSummaryFact(isZhLang() ? "动作" : "Action", taskNameById(draft.task_id)),
+    planSummaryFact(isZhLang() ? "执行内容" : "Run", taskNameById(draft.task_id)),
     planSummaryFact(isZhLang() ? "时段" : "Window", activeWindowSummary(draft))
   ]);
   const taskHint = $("ruleTaskExecutionHint");
@@ -1411,16 +1831,18 @@ function fillScheduleForm(schedule) {
 function readScheduleForm() {
   const scheduleType = $("scheduleFormType").value;
   return {
-    id: $("scheduleFormId").value.trim(),
+    id: ensurePlanFormId("scheduleFormId", "schedule"),
     name: $("scheduleFormName").value.trim(),
     schedule_type: scheduleType,
     task_id: $("scheduleFormTaskId").value,
     start_at: scheduleType === "once"
       ? $("scheduleFormStartAt").value
       : ((scheduleType === "daily" || scheduleType === "interval") ? $("scheduleFormStartAtInterval").value : ""),
-    time_of_day: $("scheduleFormTimeOfDay").value,
-    interval_sec: scheduleIntervalSeconds($("scheduleFormIntervalValue").value, $("scheduleFormIntervalUnit").value),
-    end_at: $("scheduleFormEndAt").value,
+    time_of_day: scheduleType === "daily" ? $("scheduleFormTimeOfDay").value : "",
+    interval_sec: scheduleType === "interval"
+      ? scheduleIntervalSeconds($("scheduleFormIntervalValue").value, $("scheduleFormIntervalUnit").value)
+      : 0,
+    end_at: (scheduleType === "daily" || scheduleType === "interval") ? $("scheduleFormEndAt").value : "",
     cooldown_sec: Number($("scheduleFormCooldownSec").value || 0),
     enabled: $("scheduleFormEnabled").checked,
     skip_if_task_running: $("scheduleFormSkipIfRunning").checked,
@@ -1429,6 +1851,112 @@ function readScheduleForm() {
     active_end_time: $("scheduleFormActiveEnd").value,
     description: $("scheduleFormDescription").value.trim()
   };
+}
+
+function normalizeCompareDays(days) {
+  if (!Array.isArray(days) || !days.length) return [0, 1, 2, 3, 4, 5, 6];
+  return [...new Set(days.map((item) => Number(item)).filter((item) => item >= 0 && item <= 6))].sort((a, b) => a - b);
+}
+
+function normalizeCompareConditions(rule) {
+  return normalizeRuleConditions(rule).map((condition) => ({
+    metric_key: String(condition.metric_key || condition.signal_parameter || "").trim(),
+    signal_protocol: String(condition.signal_protocol || "").trim(),
+    signal_address: Number(condition.signal_address || 0),
+    signal_parameter: String(condition.signal_parameter || "").trim(),
+    aggregation: String(condition.aggregation || "last"),
+    window_sec: Number(condition.window_sec || 60),
+    bucket_sec: Number(condition.bucket_sec || 0),
+    bucket_count: Number(condition.bucket_count || 1),
+    bucket_agg: String(condition.bucket_agg || condition.aggregation || "last"),
+    pass_mode: String(condition.pass_mode || "latest"),
+    operator: String(condition.operator || ">"),
+    threshold: Number(condition.threshold || 0),
+    requires_fresh_data: condition.requires_fresh_data !== false
+  }));
+}
+
+function canonicalRuleForCompare(rule) {
+  const conditions = normalizeCompareConditions(rule);
+  const firstCondition = conditions[0] || ruleConditionDefault();
+  return {
+    id: String(rule?.id || "").trim(),
+    name: String(rule?.name || rule?.id || "").trim(),
+    metric_key: String(firstCondition.metric_key || firstCondition.signal_parameter || "").trim(),
+    signal_protocol: String(firstCondition.signal_protocol || "").trim(),
+    signal_address: Number(firstCondition.signal_address || 0),
+    signal_parameter: String(firstCondition.signal_parameter || "").trim(),
+    aggregation: String(firstCondition.aggregation || "last"),
+    window_sec: Number(firstCondition.window_sec || 60),
+    bucket_sec: Number(firstCondition.bucket_sec || 0),
+    bucket_count: Number(firstCondition.bucket_count || 1),
+    bucket_agg: String(firstCondition.bucket_agg || firstCondition.aggregation || "last"),
+    pass_mode: String(firstCondition.pass_mode || "latest"),
+    operator: String(firstCondition.operator || ">"),
+    threshold: Number(firstCondition.threshold || 0),
+    requires_fresh_data: firstCondition.requires_fresh_data !== false,
+    condition_logic: "all",
+    conditions,
+    sustain_sec: Number(rule?.sustain_sec || 0),
+    task_id: String(rule?.task_id || ""),
+    cooldown_sec: Number(rule?.cooldown_sec || 0),
+    max_runs_per_hour: Number(rule?.max_runs_per_hour || 0),
+    enabled: rule?.enabled === true,
+    active_days: normalizeCompareDays(rule?.active_days),
+    active_start_time: String(rule?.active_start_time || ""),
+    active_end_time: String(rule?.active_end_time || ""),
+    description: String(rule?.description || "").trim()
+  };
+}
+
+function canonicalScheduleForCompare(schedule) {
+  const scheduleType = String(schedule?.schedule_type || "daily");
+  return {
+    id: String(schedule?.id || "").trim(),
+    name: String(schedule?.name || schedule?.id || "").trim(),
+    schedule_type: scheduleType,
+    task_id: String(schedule?.task_id || ""),
+    start_at: String(schedule?.start_at || ""),
+    time_of_day: scheduleType === "daily" ? String(schedule?.time_of_day || "") : "",
+    interval_sec: scheduleType === "interval" ? Number(schedule?.interval_sec || 0) : 0,
+    end_at: (scheduleType === "daily" || scheduleType === "interval") ? String(schedule?.end_at || "") : "",
+    cooldown_sec: Number(schedule?.cooldown_sec || 0),
+    enabled: schedule?.enabled === true,
+    skip_if_task_running: schedule?.skip_if_task_running !== false,
+    active_days: normalizeCompareDays(schedule?.active_days),
+    active_start_time: String(schedule?.active_start_time || ""),
+    active_end_time: String(schedule?.active_end_time || ""),
+    description: String(schedule?.description || "").trim()
+  };
+}
+
+function currentPlanHasUnsavedChanges(kind, item) {
+  if (!item) return true;
+  const draft = kind === "rule" ? canonicalRuleForCompare(readRuleForm()) : canonicalScheduleForCompare(readScheduleForm());
+  const visibleItem = { ...item, name: planName(kind, item) };
+  const saved = kind === "rule" ? canonicalRuleForCompare(visibleItem) : canonicalScheduleForCompare(visibleItem);
+  return JSON.stringify(draft) !== JSON.stringify(saved);
+}
+
+function updatePlanSaveStateBadge(isDirty) {
+  const stateBadge = $("planSaveStateBadge");
+  if (stateBadge) {
+    stateBadge.textContent = isDirty
+      ? (isZhLang() ? "未保存" : "Unsaved")
+      : (isZhLang() ? "已保存" : "Saved");
+    stateBadge.className = `task-badge ${isDirty ? "warn" : "ok"}`;
+  }
+  const draftNote = $("planDraftNote");
+  if (draftNote) {
+    draftNote.hidden = !isDirty;
+    draftNote.textContent = isZhLang() ? "保存后生效" : "Save to apply";
+  }
+}
+
+function syncPlanDraftVisual(kind, item) {
+  syncPlanEnableLabel(kind);
+  if (!item) return updatePlanSaveStateBadge(true);
+  updatePlanSaveStateBadge(currentPlanHasUnsavedChanges(kind, item));
 }
 
 function syncScheduleVisibility() {
@@ -1445,7 +1973,7 @@ function renderScheduleSummaryDraft() {
   const draft = readScheduleForm();
   box.innerHTML = renderDraftSummaryHtml([
     planSummaryFact(isZhLang() ? "启动" : "Start", scheduleTimingSummary(draft)),
-    planSummaryFact(isZhLang() ? "动作" : "Action", taskNameById(draft.task_id)),
+    planSummaryFact(isZhLang() ? "执行内容" : "Run", taskNameById(draft.task_id)),
     planSummaryFact(isZhLang() ? "时段" : "Window", planAvailabilitySummary("schedule", draft))
   ]);
   const guide = $("scheduleTypeGuide");
@@ -1464,11 +1992,11 @@ function renderSummary() {
   }
 
   const cards = [
-    [isZhLang() ? "自动计划" : "Auto plans", automationEnabledLabel(summary.automation), summary.automation?.automation_enabled ? "ok" : "warn"],
-    [isZhLang() ? "设备控制" : "Device control", automationModeLabel(summary.automation), summary.automation?.dry_run === false && summary.automation?.hardware_armed ? "ok" : "warn"],
+    [isZhLang() ? "自动" : "Auto", automationEnabledLabel(summary.automation), summary.automation?.automation_enabled ? "ok" : "warn"],
+    [isZhLang() ? "输出保护" : "Output lock", automationModeLabel(summary.automation), summary.automation?.dry_run === false && summary.automation?.hardware_armed ? "ok" : "warn"],
     [isZhLang() ? "时间计划" : "Time plans", `${summary.schedules?.enabled || 0} / ${summary.schedules?.total || 0}`, "neutral"],
     [isZhLang() ? "参数触发计划" : "Parameter plans", `${summary.rules?.enabled || 0} / ${summary.rules?.total || 0}`, "neutral"],
-    [isZhLang() ? "最近巡检" : "Last tick", summary.automation?.last_tick || "-", summary.automation?.running ? "ok" : "warn"]
+    [isZhLang() ? "最近判断" : "Last check", summary.automation?.last_tick || "-", summary.automation?.running ? "ok" : "warn"]
   ];
   box.innerHTML = cards.map(([label, value, tone]) => `
     <div class="task-stat-card ${escapeHtml(tone || "")}">
@@ -1508,7 +2036,7 @@ function renderAutomationPanel() {
       tick_sec: TASK_STATE.summary?.automation?.tick_sec || 2,
       fresh_data_sec: TASK_STATE.summary?.automation?.fresh_data_sec || 180
     };
-    if (payload.hardware_armed && !window.confirm(isZhLang() ? "允许自动计划真实控制继电器和 PWM？请确认现场设备安全。" : "Allow automatic plans to control relays and PWM?")) return;
+    if (payload.hardware_armed && !window.confirm(isZhLang() ? "允许自动计划真实控制继电器和 PWM？请确认设备与工况安全。" : "Allow automatic plans to control relays and PWM?")) return;
     try {
       await saveAutomationConfig(payload);
       await refreshTasksPage();
@@ -1574,7 +2102,6 @@ function bindPlanListEvents(onRender) {
 function renderDraftTypeSwitch(kind) {
   return `
     <div class="task-draft-switch">
-      <span>${isZhLang() ? "计划类型" : "Plan type"}</span>
       <div class="task-draft-switch-buttons">
         <button class="btn btn-pill${kind === "schedule" ? " active" : ""}" type="button" data-draft-kind="schedule">${planTypeSwitchLabel("schedule")}</button>
         <button class="btn btn-pill${kind === "rule" ? " active" : ""}" type="button" data-draft-kind="rule">${planTypeSwitchLabel("rule")}</button>
@@ -1607,8 +2134,7 @@ function renderTaskTabs() {
   if (!box) return;
   const tabs = [
     ["plans", isZhLang() ? "任务计划" : "Plans"],
-    ["logs", isZhLang() ? "运行记录" : "Logs"],
-    ["diagnostics", isZhLang() ? "服务状态" : "Service"]
+    ["logs", isZhLang() ? "运行记录" : "Logs"]
   ];
   box.innerHTML = tabs.map(([id, label]) => `
     <button type="button" class="ac-tab-btn${TASK_STATE.activeTab === id ? " active" : ""}" data-task-tab="${id}">${label}</button>
@@ -1776,8 +2302,10 @@ function renderTaskWorkspace() {
     try {
       TASK_STATE.status.tasks = dryRun ? tr("tasks.feedback.task_running_dry") : tr("tasks.feedback.task_running_live");
       renderTaskWorkspace();
-      const res = await executeActionTask(id, { dryRun, source: "manual" });
-      TASK_STATE.status.tasks = `${res.message}, ${tr("tasks.logs.log_id")} #${res.log_id}`;
+      const res = await executeActionTask(id, { dryRun, source: "manual", asyncRun: !dryRun });
+      TASK_STATE.status.tasks = res.job_id
+        ? `${isZhLang() ? "已开始后台执行" : "Started in background"} | Job #${res.job_id}`
+        : `${res.message}, ${tr("tasks.logs.log_id")} #${res.log_id}`;
       await refreshTasksPage();
     } catch (error) {
       TASK_STATE.status.tasks = error.message || String(error);
@@ -1818,7 +2346,7 @@ function renderRuleWorkspace() {
           <section class="task-form-section">
             ${sectionTitle(tr("tasks.rule.section_trigger"), isZhLang() ? "\u8bbe\u7f6e\u4ec0\u4e48\u6307\u6807\u3001\u6309\u4ec0\u4e48\u6761\u4ef6\u6210\u7acb\uff0c\u4ee5\u53ca\u8981\u6301\u7eed\u591a\u4e45\u624d\u89e6\u53d1\u3002" : "Choose what to monitor, how it compares, and how long it must stay true.")}
             <div class="task-section-grid">
-              <label class="ac-wide">${isZhLang() ? "监测点" : "Monitored point"}<select id="ruleFormSourceKey" class="input"></select></label>
+              <label class="ac-wide">${isZhLang() ? "监测数据" : "Monitored data"}<select id="ruleFormSourceKey" class="input"></select></label>
               <label>${tr("tasks.rule.operator")}
                 <select id="ruleFormOperator" class="input">
                   <option value=">">${tr("tasks.rule.op_gt")}</option>
@@ -1881,7 +2409,7 @@ function renderRuleWorkspace() {
             <summary>${tr("tasks.diagnostics.advanced_fields")}</summary>
             <div class="task-section-grid" style="margin-top:12px;">
               <label>${tr("tasks.field.id")}<input id="ruleFormId" class="input" /></label>
-              <div class="mini ac-wide">${isZhLang() ? "监测点对应的系统绑定信息会自动保存，这里通常不用手动改。" : "The system binding for this monitored point is saved automatically and usually does not need manual changes."}</div>
+              <div class="mini ac-wide">${isZhLang() ? "这项数据对应的系统绑定信息会自动保存，这里通常不用手动改。" : "The system binding for this data item is saved automatically and usually does not need manual changes."}</div>
             </div>
           </details>
         </div>
@@ -1977,9 +2505,11 @@ function renderRuleWorkspace() {
     const dryRun = $("ruleFormDryRun").checked;
     if (!dryRun && !window.confirm(tr("tasks.confirm.real_run_rule"))) return;
     try {
-      const res = await evaluateActionRule(id, { dryRun, executeIfMatch: true });
+      const res = await evaluateActionRule(id, { dryRun, executeIfMatch: true, asyncRun: !dryRun });
       if (res.task_result) {
-        TASK_STATE.status.rules = `${res.message} | ${tr("tasks.logs.log_id")} #${res.task_result.log_id ?? "-"}`;
+        TASK_STATE.status.rules = res.task_result.job_id
+          ? `${isZhLang() ? "已开始后台执行" : "Started in background"} | Job #${res.task_result.job_id}`
+          : `${res.message} | ${tr("tasks.logs.log_id")} #${res.task_result.log_id ?? "-"}`;
       } else {
         TASK_STATE.status.rules = `${res.matched ? tr("tasks.rule.matched") : tr("tasks.rule.not_matched")} | ${res.message || tr("tasks.feedback.task_not_executed")}`;
       }
@@ -2252,6 +2782,39 @@ function setPlanStatus(kind, message, tone = "info") {
   else TASK_STATE.statusTone.schedules = message ? tone : "";
 }
 
+function updatePlanStatusLine(kind, message, tone = "info") {
+  setPlanStatus(kind, message, tone);
+  let line = $("planStatusMessage");
+  const wrap = document.querySelector(".task-status-line");
+  if (!line && wrap) {
+    line = document.createElement("span");
+    line.id = "planStatusMessage";
+    wrap.appendChild(line);
+  }
+  if (line) {
+    line.textContent = message;
+    line.className = `mini task-status-pill ${tone}`;
+  }
+}
+
+async function releaseHardwareOutputForPlan(kind) {
+  const automation = TASK_STATE.summary?.automation || {};
+  if (hardwareOutputReleased()) return true;
+  if (!window.confirm(isZhLang() ? "确认放行设备输出？放行后，手动执行和已启用计划可以控制继电器和 PWM。请先确认现场安全。" : "Release device output? Manual runs and enabled plans may control relays and PWM.")) {
+    return false;
+  }
+  await saveAutomationConfig({
+    automation_enabled: automation.automation_enabled === true,
+    dry_run: false,
+    hardware_armed: true,
+    tick_sec: automation.tick_sec || 2,
+    fresh_data_sec: automation.fresh_data_sec || 180
+  });
+  setPlanStatus(kind, isZhLang() ? "设备输出已放行，可以执行一次。" : "Device output released. You can run once now.", "ok");
+  await refreshTasksPage();
+  return true;
+}
+
 function planSavedStatusText(item) {
   const enabled = item?.enabled !== false;
   if (isZhLang()) return enabled ? "计划已保存并启用。" : "计划已保存，但当前处于停用状态。";
@@ -2269,14 +2832,14 @@ function scheduleCheckStatusText(item) {
 }
 
 function planToggleDraftStatusText(enabled) {
-  if (isZhLang()) return enabled ? "已设为启用，保存后开始生效。" : "已设为停用，保存后开始生效。";
+  if (isZhLang()) return enabled ? "未保存：保存后启用。" : "未保存：保存后停用。";
   return enabled ? "Set to enabled. Save to apply." : "Set to disabled. Save to apply.";
 }
 
 function renderPlanDecisionStrip(kind, item) {
   const cells = [
     [isZhLang() ? "触发方式" : "Trigger", triggerSummary(kind, item)],
-    [isZhLang() ? "执行动作" : "Action", actionSummaryForPlan(item)],
+    [isZhLang() ? "执行内容" : "Run", actionSummaryForPlan(item)],
     [isZhLang() ? "生效时间" : "Active time", item ? planAvailabilitySummary(kind, item) : (isZhLang() ? "每天 全天" : "Every day, all day")],
     [isZhLang() ? "保护限制" : "Limits", limitSummaryForPlan(kind, item)]
   ];
@@ -2349,7 +2912,7 @@ function renderSchedulePlanEditor(schedule) {
         </div>
       </section>
       <section class="task-form-section">
-        ${sectionTitle(isZhLang() ? "2. 做什么" : "2. Action", isZhLang() ? "动作内容在“动作配置”里维护，这里只选择要执行哪一个。" : "Actions are edited in Action Config.")}
+        ${sectionTitle(isZhLang() ? "2. 做什么" : "2. Action", isZhLang() ? "执行内容在“动作配置”里维护，这里只选择要执行哪一个。" : "Actions are edited in Action Config.")}
         <label>${isZhLang() ? "执行内容" : "Action"}<select id="scheduleFormTaskId" class="input"></select></label>
         <div class="task-inline-note" id="scheduleTaskExecutionHint">${escapeHtml(taskExecutionSummary(data.task_id))}</div>
       </section>
@@ -2384,10 +2947,10 @@ function renderRulePlanEditor(rule) {
       ${rule ? "" : renderDraftTypeSwitch("rule")}
       <label>${isZhLang() ? "计划名称" : "Name"}<input id="ruleFormName" class="input" /></label>
       <section class="task-form-section">
-        ${sectionTitle(isZhLang() ? "1. 哪个参数达到设定值" : "1. Parameter trigger", isZhLang() ? "例如 pH 高于 6.8 并持续 30 秒。" : "For example pH above 6.8 for 30 seconds.")}
+        ${sectionTitle(isZhLang() ? "1. 触发条件" : "1. Trigger condition", isZhLang() ? "选择监测数据和判断条件。" : "Choose monitored data and the condition.")}
         <div class="task-section-grid">
-          <label class="ac-wide">${isZhLang() ? "监测点" : "Monitored point"}<select id="ruleFormSourceKey" class="input"></select></label>
-          <label>${isZhLang() ? "判断方式" : "Compare"}
+          <label class="ac-wide">${isZhLang() ? "监测数据" : "Monitored data"}<select id="ruleFormSourceKey" class="input"></select></label>
+          <label>${isZhLang() ? "条件" : "Condition"}
             <select id="ruleFormOperator" class="input">
               <option value=">">${isZhLang() ? "高于" : "above"}</option>
               <option value=">=">${isZhLang() ? "不低于" : "at least"}</option>
@@ -2395,14 +2958,14 @@ function renderRulePlanEditor(rule) {
               <option value="<=">${isZhLang() ? "不高于" : "at most"}</option>
             </select>
           </label>
-          <label>${isZhLang() ? "设定值" : "Value"}<input id="ruleFormThreshold" class="input" type="number" step="0.01" /></label>
-          <label>${isZhLang() ? "持续秒数" : "Hold seconds"}<input id="ruleFormSustainSec" class="input" type="number" min="0" max="86400" /></label>
+          <label>${isZhLang() ? "触发值" : "Value"}<input id="ruleFormThreshold" class="input" type="number" step="0.01" /></label>
+          <label>${isZhLang() ? "兼容确认时间（秒）" : "Legacy confirm seconds"}<input id="ruleFormSustainSec" class="input" type="number" min="0" max="86400" /></label>
         </div>
         <div class="task-inline-note" id="ruleFormSourceHint"></div>
       </section>
       <section class="task-form-section">
-        ${sectionTitle(isZhLang() ? "2. 做什么" : "2. Action", isZhLang() ? "条件成立后执行哪个动作。" : "Choose what runs when the condition is met.")}
-        <label>${isZhLang() ? "执行内容" : "Action"}<select id="ruleFormTaskId" class="input"></select></label>
+        ${sectionTitle(isZhLang() ? "2. 执行内容" : "2. Run", isZhLang() ? "条件成立后执行哪项内容。" : "Choose what runs when the condition is met.")}
+        <label>${isZhLang() ? "执行内容" : "Run"}<select id="ruleFormTaskId" class="input"></select></label>
         <div class="task-inline-note" id="ruleTaskExecutionHint">${escapeHtml(taskExecutionSummary(data.task_id))}</div>
       </section>
       <section class="task-form-section">
@@ -2413,8 +2976,8 @@ function renderRulePlanEditor(rule) {
           <label>${isZhLang() ? "到" : "To"}<input id="ruleFormActiveEnd" class="input" type="time" /></label>
         </div>
         <div class="task-section-grid">
-          <label>${isZhLang() ? "两次至少间隔秒数" : "Minimum gap seconds"}<input id="ruleFormCooldownSec" class="input" type="number" min="0" max="86400" /></label>
-          <label>${isZhLang() ? "每小时最多执行" : "Max runs per hour"}<input id="ruleFormMaxRunsPerHour" class="input" type="number" min="0" max="3600" /></label>
+          <label>${isZhLang() ? "再次执行间隔（秒）" : "Minimum gap seconds"}<input id="ruleFormCooldownSec" class="input" type="number" min="0" max="86400" /></label>
+          <label>${isZhLang() ? "每小时上限" : "Max runs per hour"}<input id="ruleFormMaxRunsPerHour" class="input" type="number" min="0" max="3600" /></label>
           <label class="ac-check task-section-check"><input id="ruleFormFreshData" type="checkbox" checked /> ${isZhLang() ? "只使用最近采集的数据" : "Require recent data"}</label>
           <label class="ac-check task-section-check"><input id="ruleFormEnabled" type="checkbox" /> ${isZhLang() ? "启用这条计划" : "Enable this plan"}</label>
         </div>
@@ -2424,14 +2987,14 @@ function renderRulePlanEditor(rule) {
         <div class="task-section-grid" style="margin-top:12px;">
           <label>${isZhLang() ? "统计方式" : "Statistic"}
             <select id="ruleFormAggregation" class="input">
-              <option value="last">${isZhLang() ? "最新值" : "Latest"}</option>
+              <option value="last">${isZhLang() ? "最近入库值" : "Latest stored value"}</option>
               <option value="avg">${isZhLang() ? "平均值" : "Average"}</option>
               <option value="min">${isZhLang() ? "最低值" : "Minimum"}</option>
               <option value="max">${isZhLang() ? "最高值" : "Maximum"}</option>
             </select>
           </label>
-          <label>${isZhLang() ? "统计窗口秒数" : "Window seconds"}<input id="ruleFormWindowSec" class="input" type="number" min="1" max="86400" /></label>
-          <div class="mini ac-wide">${isZhLang() ? "监测点对应的系统绑定信息会自动带入，这里通常不用手动填写。" : "The system binding for this monitored point is filled in automatically and usually does not need manual entry."}</div>
+          <label>${isZhLang() ? "统计最近（秒）" : "Range seconds"}<input id="ruleFormWindowSec" class="input" type="number" min="1" max="86400" /></label>
+          <div class="mini ac-wide">${isZhLang() ? "这项数据对应的系统绑定信息会自动带入，这里通常不用手动填写。" : "The system binding for this data item is filled in automatically and usually does not need manual entry."}</div>
         </div>
       </details>
       <label>${isZhLang() ? "备注" : "Notes"}<textarea id="ruleFormDescription" class="input ac-textarea"></textarea></label>
@@ -2519,13 +3082,18 @@ function scheduleStateTextV2(item) {
 
 function ruleStateTextV2(item) {
   if (!item) return "-";
-  const metric = metricLabel(item.metric_key || item.signal_parameter || "-");
   if (item.enabled === false) return isZhLang() ? "计划已停用" : "Plan disabled";
   if (!item.runtime?.active_window?.active_now) return isZhLang() ? "当前不在生效时段" : "Outside active time";
   if (!item.runtime?.stats?.latest_ts) return isZhLang() ? "等待最近数据" : "Waiting for recent data";
   if (item.runtime?.fresh_ok === false) return isZhLang() ? "数据已过期" : "Data is stale";
   if (item.runtime?.would_fire_now) return isZhLang() ? "条件已满足，可自动执行" : "Ready to run";
   if (item.runtime?.matched_now) return isZhLang() ? "条件满足，但被保护限制拦住" : "Matched but limited";
+  if (Number(item.runtime?.condition_count || 0) > 1) {
+    return isZhLang()
+      ? `已满足 ${item.runtime?.matched_count || 0}/${item.runtime?.condition_count || 0} 条条件`
+      : `${item.runtime?.matched_count || 0}/${item.runtime?.condition_count || 0} conditions matched`;
+  }
+  const metric = metricLabel(item.metric_key || item.signal_parameter || "-");
   if (item.runtime?.current_value != null) {
     return isZhLang()
       ? `${metric} ${item.runtime.current_value}，未到 ${item.threshold ?? "-"}`
@@ -2634,33 +3202,25 @@ function planReasonListV2(kind, item) {
     if (item.runtime?.hourly_ready === false) reasons.push(isZhLang() ? "已到每小时上限" : "Hourly limit reached");
   } else {
     if (item.runtime?.next_run_ts) reasons.push(isZhLang() ? `已排到 ${formatClockV2(item.runtime.next_run_ts)}` : `Scheduled for ${formatClockV2(item.runtime.next_run_ts)}`);
-    else if (item.runtime?.blocked_reason === "Task is running") reasons.push(isZhLang() ? "上次动作还没结束" : "Previous run is still active");
+    else if (item.runtime?.blocked_reason === "Task is running") reasons.push(isZhLang() ? "上次执行还没结束" : "Previous run is still active");
     else if (item.runtime?.blocked_reason === "Cooldown is active" || item.runtime?.cooldown_ready === false) reasons.push(isZhLang() ? "还在等待再次执行间隔" : "Still waiting for the restart gap");
     else if (item.runtime?.blocked_reason) reasons.push(blockedReasonLabel(item.runtime.blocked_reason));
   }
 
-  const automation = TASK_STATE.summary?.automation || {};
-  if (automation.dry_run !== false || !automation.hardware_armed) {
-    reasons.push(isZhLang() ? "当前不控制设备" : "No hardware output");
-  }
   return Array.from(new Set(reasons.filter(Boolean))).slice(0, 3);
 }
 
 function planExplanationTextV2(kind, item) {
   if (!item) return isZhLang() ? "保存后，系统会按这条计划的设置来判断是否执行。" : "After you save, the system will evaluate this plan using the settings below.";
-  const automation = TASK_STATE.summary?.automation || {};
   if (item.enabled === false) {
     return isZhLang() ? "这条计划目前已停用，所以系统不会自动执行它。" : "This plan is currently disabled, so it will not run automatically.";
   }
   if (!item.runtime?.active_window?.active_now) {
     return isZhLang() ? "当前时间不在这条计划的生效时段内，所以系统先不会执行它。" : "The current time is outside this plan's allowed time window, so it will not run yet.";
   }
-  if (automation.dry_run !== false || !automation.hardware_armed) {
-    return isZhLang() ? "计划系统现在处于不控制设备的状态，所以就算满足条件，也只会记录，不会真正输出。" : "Hardware output is currently locked, so even if the plan is ready, the system will only record it and will not drive the device.";
-  }
   if (kind === "schedule") {
     if (item.runtime?.blocked_reason === "Task is running") {
-      return isZhLang() ? "上一次执行还没有结束，这条计划会先跳过，避免重复启动同一个动作。" : "The previous run is still active, so this plan will wait instead of starting the same action again.";
+      return isZhLang() ? "上一次执行还没有结束，这条计划会先跳过，避免重复启动同一项内容。" : "The previous run is still active, so this plan will wait instead of starting the same action again.";
     }
     if (item.runtime?.blocked_reason === "Cooldown is active" || item.runtime?.cooldown_ready === false) {
       return isZhLang() ? "这条计划还在等待再次启动的最少间隔，所以现在不会重复执行。" : "This plan is still inside its minimum restart gap, so it will not run again yet.";
@@ -2671,13 +3231,13 @@ function planExplanationTextV2(kind, item) {
     return isZhLang() ? "这条时间计划当前还没有排到下一次执行时间，请检查启动方式和生效时段。" : "This time plan does not currently have a next run scheduled. Check its schedule type and allowed time window.";
   }
   if (!item.runtime?.stats?.latest_ts) {
-    return isZhLang() ? "系统最近还没有拿到这项监测点的数据，所以现在不能按条件判断。" : "The system does not have recent data for this monitored point yet, so it cannot evaluate the condition now.";
+    return isZhLang() ? "系统最近还没有拿到这项监测数据，所以现在不能按条件判断。" : "The system does not have recent data for this monitored data item yet, so it cannot evaluate the condition now.";
   }
   if (item.runtime?.fresh_ok === false) {
-    return isZhLang() ? "这项监测点的数据已经过期，系统会先等到新的有效数据再判断。" : "The monitored data is stale, so the system will wait for fresh data before evaluating the condition again.";
+    return isZhLang() ? "这项监测数据已经过期，系统会先等到新的有效数据再判断。" : "The monitored data is stale, so the system will wait for fresh data before evaluating the condition again.";
   }
   if (item.runtime?.would_fire_now) {
-    return isZhLang() ? "这条参数触发计划现在已经满足，系统允许时就会自动执行。" : "This parameter plan is currently satisfied and will run automatically when hardware output is allowed.";
+    return isZhLang() ? "这条参数触发计划现在已经满足，将执行设定动作。" : "This parameter plan is currently satisfied and will run its configured action.";
   }
   if (item.runtime?.matched_now) {
     return isZhLang() ? "数值条件已经碰到了，但还被频率限制拦着，所以当前不会重复执行。" : "The value condition is met, but a run limit is still blocking another execution right now.";
@@ -2685,7 +3245,7 @@ function planExplanationTextV2(kind, item) {
   if (item.runtime?.current_value != null) {
     return isZhLang() ? `当前监测值是 ${item.runtime.current_value}，还没有达到这条计划的触发条件。` : `The current monitored value is ${item.runtime.current_value}, which has not reached this plan's trigger condition yet.`;
   }
-  return isZhLang() ? "系统会持续巡检这条计划，等条件满足后再决定是否执行。" : "The system will keep checking this plan and decide whether to run it when the condition becomes true.";
+  return isZhLang() ? "系统会定期检查这条计划，等条件满足后再决定是否执行。" : "The system will keep checking this plan and decide whether to run it when the condition becomes true.";
 }
 
 function renderPlanStatusBannerV2(kind, item) {
@@ -2701,13 +3261,8 @@ function renderPlanStatusBannerV2(kind, item) {
       tone = "ok";
     }
     if (kind === "rule" && item.enabled !== false && item.runtime?.would_fire_now) {
-      const automation = TASK_STATE.summary?.automation || {};
-      if (automation.dry_run !== false || !automation.hardware_armed) {
-        title = isZhLang() ? "条件已满足，但当前不控制设备" : "Matched, no hardware output";
-      } else {
-        title = isZhLang() ? "条件已满足，执行已就绪" : "Condition met, ready to run";
-        tone = "ok";
-      }
+      title = isZhLang() ? "条件已满足，执行已就绪" : "Condition met, ready to run";
+      tone = "ok";
     } else if (kind === "rule" && item.enabled !== false && item.runtime?.matched_now) {
       title = isZhLang() ? "条件已满足，但当前受限" : "Condition met, but limited";
     }
@@ -2748,23 +3303,16 @@ function renderUnifiedPlanListV2() {
       </div>
       <div id="planList" class="task-plan-list">
         ${items.length ? items.map((item) => {
-          const nextInfo = planNextInfoV2(item.kind, item);
-          const compactSummary = planListSummaryV2(item);
+          const briefText = planItemBriefV2(item);
           return `
             <button type="button" class="task-plan-item${item.active ? " active" : ""}" data-plan-kind="${item.kind}" data-plan-id="${escapeHtml(item.id)}">
-              <span class="task-plan-item-icon ${item.kind} ${planCardToneV2(item.kind, item)}"></span>
               <span class="task-plan-item-main">
                 <span class="task-plan-item-top">
                   <span class="task-item-title">${escapeHtml(item.name)}</span>
-                  <span class="task-badge-row">${planStatusBadge(item.kind, item)}</span>
+                  <span class="task-badge-row">${planItemStatusBadgeV2(item)}</span>
                 </span>
-                <span class="task-plan-item-summary">${escapeHtml(compactSummary)}</span>
-                <span class="task-plan-item-subline">
-                  <span>${escapeHtml(nextInfo.label)}</span>
-                  <strong>${escapeHtml(nextInfo.value)}</strong>
-                </span>
+                <span class="task-plan-item-summary">${escapeHtml(briefText)}</span>
               </span>
-              <span class="task-plan-chevron" aria-hidden="true">›</span>
             </button>
           `;
         }).join("") : `<div class="empty-hint">${isZhLang() ? "当前筛选下还没有计划。" : "No plans in this filter."}</div>`}
@@ -2783,7 +3331,7 @@ function renderSchedulePlanEditorV2(schedule) {
       <label class="task-plan-name-field">${isZhLang() ? "计划名称" : "Plan name"}<input id="scheduleFormName" class="input" /></label>
       <div class="task-plan-section-cluster task-plan-section-cluster-schedule">
         <section class="task-form-section task-plan-panel task-span-2">
-          ${sectionTitle(isZhLang() ? "1. 怎么安排时间" : "1. How it is scheduled", isZhLang() ? "选择只执行一次、每天固定时间，或按固定间隔反复执行。" : "Choose once, daily, or a repeating interval.")}
+          ${sectionTitle(isZhLang() ? "1. 执行时间" : "1. Time", isZhLang() ? "支持单次、每天固定时间、固定间隔三种安排。" : "Once, daily time, or fixed interval.")}
           <div class="task-section-grid task-plan-grid-when">
             <label>${isZhLang() ? "安排方式" : "Schedule type"}
               <select id="scheduleFormType" class="input">
@@ -2807,7 +3355,7 @@ function renderSchedulePlanEditorV2(schedule) {
           </div>
         </section>
         <section class="task-form-section task-plan-panel">
-          ${sectionTitle(isZhLang() ? "2. 哪些日期和时段有效" : "2. Active dates and hours", isZhLang() ? "限制开始日期、结束日期、工作日或营业时段。" : "Limit start date, end date, days, or operating hours.")}
+          ${sectionTitle(isZhLang() ? "2. 什么时候允许执行" : "2. Allowed dates and hours", isZhLang() ? "不填就是一直有效；可限制工作日、夜间停用或截止日期。" : "Blank means always allowed; set days, night stop, or an end date if needed.")}
           <div class="task-window-times task-date-window-times">
             <label data-task-schedule="daily interval">${isZhLang() ? "从哪天开始" : "Start from"}<input id="scheduleFormStartAtInterval" class="input" type="datetime-local" /></label>
             <label data-task-schedule="daily interval">${isZhLang() ? "到哪天结束" : "End at"}<input id="scheduleFormEndAt" class="input" type="datetime-local" /></label>
@@ -2819,17 +3367,17 @@ function renderSchedulePlanEditorV2(schedule) {
           </div>
         </section>
         <section class="task-form-section task-plan-panel">
-          ${sectionTitle(isZhLang() ? "3. 到时执行什么" : "3. What it runs", isZhLang() ? "选择要执行的动作。" : "Choose what runs when the time arrives.")}
+        ${sectionTitle(isZhLang() ? "3. 执行什么" : "3. Run at that time", isZhLang() ? "这里选择动作配置里已经定义好的执行内容。" : "Choose a saved action from Action Setup.")}
           <div class="task-section-grid task-plan-grid-action">
-            <label class="ac-wide">${isZhLang() ? "执行动作" : "Action"}<select id="scheduleFormTaskId" class="input"></select></label>
+            <label class="ac-wide">${isZhLang() ? "执行内容" : "Run"}<select id="scheduleFormTaskId" class="input"></select></label>
           </div>
           <div class="task-inline-note" id="scheduleTaskExecutionHint">${escapeHtml(taskExecutionSummary(data.task_id))}</div>
-          <button class="task-inline-link" type="button" id="btnPlanOpenActionConfig">${isZhLang() ? "查看动作详情" : "View action details"}</button>
+          <button class="task-inline-link" type="button" id="btnPlanOpenActionConfig">${isZhLang() ? "查看执行内容" : "View action details"}</button>
           <details class="task-advanced-fields">
-            <summary>${isZhLang() ? "执行保护（可选）" : "Run protection (optional)"}</summary>
+            <summary>${isZhLang() ? "重复执行保护" : "Repeat protection"}</summary>
             <div class="task-section-grid" style="margin-top:12px;">
-              <label>${isZhLang() ? "同一计划至少间隔（秒）" : "Minimum gap (s)"}<input id="scheduleFormCooldownSec" class="input" type="number" min="0" max="86400" /></label>
-              <label class="ac-check task-section-check ac-wide"><input id="scheduleFormSkipIfRunning" type="checkbox" checked /> ${isZhLang() ? "上次还没结束，这次先跳过" : "Skip this run if the previous one is still active"}</label>
+              <label>${isZhLang() ? "同一计划最小间隔（秒）" : "Minimum gap (s)"}<input id="scheduleFormCooldownSec" class="input" type="number" min="0" max="86400" /></label>
+              <label class="ac-check task-section-check ac-wide"><input id="scheduleFormSkipIfRunning" type="checkbox" checked /> ${isZhLang() ? "上次未完成时跳过本次" : "Skip this run if the previous one is still active"}</label>
             </div>
           </details>
         </section>
@@ -2856,50 +3404,17 @@ function renderRulePlanEditorV2(rule) {
       <div class="task-plan-section-cluster task-plan-section-cluster-rule">
         <section class="task-form-section task-plan-panel task-span-2">
           ${sectionTitle(
-            isZhLang() ? "1. 什么情况下触发" : "1. What triggers it",
+            isZhLang() ? "1. 参数条件" : "1. Parameter conditions",
             isZhLang()
-              ? "选择一个监测点，设定数值达到什么程度、持续多久才执行。"
-              : "Choose one monitored point, set the value it must reach, and how long it must hold."
+      ? "选择监测数据、数据粒度、取值和阈值；多条条件需要全部满足。"
+      : "Choose data, interval, value mode, and threshold. All conditions must match."
           )}
-          <div class="task-section-grid task-plan-grid-trigger">
-            <label class="ac-wide">${isZhLang() ? "监测点" : "Monitored point"}<select id="ruleFormSourceKey" class="input"></select></label>
-            <label>${isZhLang() ? "比较方式" : "Compare"}
-              <select id="ruleFormOperator" class="input">
-                <option value=">">${isZhLang() ? "大于" : "above"}</option>
-                <option value=">=">${isZhLang() ? "大于等于" : "at least"}</option>
-                <option value="<">${isZhLang() ? "小于" : "below"}</option>
-                <option value="<=">${isZhLang() ? "小于等于" : "at most"}</option>
-              </select>
-            </label>
-            <label>${isZhLang() ? "设定值" : "Set value"}<input id="ruleFormThreshold" class="input" type="number" step="0.01" /></label>
-            <label>${isZhLang() ? "需要持续多久（秒）" : "Hold for (s)"}<input id="ruleFormSustainSec" class="input" type="number" min="0" max="86400" /></label>
-          </div>
-          <div class="task-section-grid task-plan-grid-trigger task-plan-grid-trigger-secondary">
-            <label>${isZhLang() ? "判断方式" : "Reading mode"}
-              <select id="ruleFormAggregation" class="input">
-                <option value="last">${isZhLang() ? "只看最新一次读数" : "Latest reading only"}</option>
-                <option value="avg">${isZhLang() ? "看最近一段时间的平均值" : "Average over a recent period"}</option>
-                <option value="min">${isZhLang() ? "看最近一段时间的最低值" : "Lowest value in a recent period"}</option>
-                <option value="max">${isZhLang() ? "看最近一段时间的最高值" : "Highest value in a recent period"}</option>
-              </select>
-            </label>
-            <label id="ruleFormWindowRow">${isZhLang() ? "最近多久" : "Recent period"}
-              <div class="task-inline-duration">
-                <input id="ruleFormWindowValue" class="input" type="number" min="1" max="86400" />
-                <select id="ruleFormWindowUnit" class="input">
-                  <option value="second">${isZhLang() ? "秒" : "Seconds"}</option>
-                  <option value="minute">${isZhLang() ? "分钟" : "Minutes"}</option>
-                  <option value="hour">${isZhLang() ? "小时" : "Hours"}</option>
-                </select>
-              </div>
-            </label>
-            <label class="ac-check task-section-check"><input id="ruleFormFreshData" type="checkbox" checked /> ${isZhLang() ? "没新数据就不执行" : "Do not run without fresh data"}</label>
-          </div>
-          <div class="task-inline-note" id="ruleFormSourceHint"></div>
-          <div class="task-inline-note" id="ruleFormValueModeHint"></div>
+          <div id="ruleConditionList" class="rule-condition-list"></div>
+          <button class="btn btn-pill task-secondary-action rule-add-condition" type="button" id="btnRuleAddCondition">${isZhLang() ? "再加一条条件" : "Add condition"}</button>
+          <input id="ruleFormSustainSec" class="input" type="hidden" value="0" />
         </section>
         <section class="task-form-section task-plan-panel">
-          ${sectionTitle(isZhLang() ? "2. 哪些时段允许触发" : "2. Allowed trigger window", isZhLang() ? "限制工作日、营业时段，或夜间停用区间。" : "Limit the rule to specific days or operating hours.")}
+          ${sectionTitle(isZhLang() ? "2. 什么时候允许执行" : "2. Allowed time", isZhLang() ? "不填就是全天有效；结束早于开始表示跨夜。" : "Blank means all day; end earlier than start means overnight.")}
           <div class="task-day-row">${renderActiveDayChecks("rule", data.active_days)}</div>
           <div class="task-window-times">
             <label>${isZhLang() ? "每天从" : "From"}<input id="ruleFormActiveStart" class="input" type="time" /></label>
@@ -2907,14 +3422,14 @@ function renderRulePlanEditorV2(rule) {
           </div>
         </section>
         <section class="task-form-section task-plan-panel">
-          ${sectionTitle(isZhLang() ? "3. 满足后执行什么" : "3. What it runs", isZhLang() ? "选择执行动作，并补充频率保护。" : "Choose the action and add safety limits.")}
+          ${sectionTitle(isZhLang() ? "3. 执行什么" : "3. Run after match", isZhLang() ? "选择动作配置里已有的执行内容，并设置重复执行保护。" : "Choose a saved action and set repeat protection.")}
           <div class="task-section-grid task-plan-grid-action">
-            <label class="ac-wide">${isZhLang() ? "执行动作" : "Action"}<select id="ruleFormTaskId" class="input"></select></label>
-            <label>${isZhLang() ? "两次执行至少间隔（秒）" : "Minimum gap between runs (s)"}<input id="ruleFormCooldownSec" class="input" type="number" min="0" max="86400" /></label>
-            <label>${isZhLang() ? "每小时最多执行几次" : "Maximum runs per hour"}<input id="ruleFormMaxRunsPerHour" class="input" type="number" min="0" max="3600" /></label>
+            <label class="ac-wide">${isZhLang() ? "执行内容" : "Run"}<select id="ruleFormTaskId" class="input"></select></label>
+            <label>${isZhLang() ? "最小间隔（秒）" : "Minimum gap (s)"}<input id="ruleFormCooldownSec" class="input" type="number" min="0" max="86400" /></label>
+            <label>${isZhLang() ? "每小时上限" : "Hourly limit"}<input id="ruleFormMaxRunsPerHour" class="input" type="number" min="0" max="3600" /></label>
           </div>
           <div class="task-inline-note" id="ruleTaskExecutionHint">${escapeHtml(taskExecutionSummary(data.task_id))}</div>
-          <button class="task-inline-link" type="button" id="btnPlanOpenActionConfig">${isZhLang() ? "查看动作详情" : "View action details"}</button>
+          <button class="task-inline-link" type="button" id="btnPlanOpenActionConfig">${isZhLang() ? "查看执行内容" : "View action details"}</button>
         </section>
       </div>
       <details class="task-plan-note-panel">
@@ -2932,21 +3447,21 @@ function renderTaskRuntimePanelV2() {
   const summary = TASK_STATE.summary || {};
   const automation = summary.automation || {};
   const autoValue = !automation.running
-    ? (isZhLang() ? "计划服务未启动" : "Service stopped")
+    ? (isZhLang() ? "未运行" : "Off")
     : automation.automation_enabled
-      ? (isZhLang() ? "自动运行中" : "Running automatically")
-      : (isZhLang() ? "自动运行已暂停" : "Automation paused");
+      ? (isZhLang() ? "运行中" : "Running")
+      : (isZhLang() ? "已暂停" : "Paused");
   const autoTone = automation.running && automation.automation_enabled ? "ok" : "warn";
   const hardwareValue = (automation.dry_run === false && automation.hardware_armed)
-    ? (isZhLang() ? "已接管" : "Under control")
-    : (isZhLang() ? "未接管" : "Not controlled");
+    ? (isZhLang() ? "已放行" : "Released")
+    : (isZhLang() ? "已锁定" : "Locked");
   const lastTickValue = automation.last_tick ? formatClockV2(automation.last_tick, true) : "--:--:--";
   const autoActionLabel = automation.automation_enabled
-    ? (isZhLang() ? "暂停自动计划" : "Pause automation")
-    : (isZhLang() ? "恢复自动计划" : "Resume automation");
+    ? (isZhLang() ? "暂停判断" : "Pause")
+    : (isZhLang() ? "恢复判断" : "Resume");
   const hardwareActionLabel = (automation.dry_run === false && automation.hardware_armed)
-    ? (isZhLang() ? "锁定现场设备" : "Lock field devices")
-    : (isZhLang() ? "接管现场设备" : "Take control");
+    ? (isZhLang() ? "锁定输出" : "Lock output")
+    : (isZhLang() ? "放行输出" : "Release output");
 
   box.innerHTML = `
     <div class="task-runtime-strip">
@@ -2954,30 +3469,30 @@ function renderTaskRuntimePanelV2() {
         <div class="task-runtime-metric">
           <span class="task-runtime-dot ${autoTone}"></span>
           <div>
-            <span>${isZhLang() ? "计划运行" : "Plan runtime"}</span>
+          <span>${isZhLang() ? "计划判断" : "Plan check"}</span>
             <strong>${escapeHtml(autoValue)}</strong>
           </div>
         </div>
         <div class="task-runtime-metric">
           <span class="task-runtime-dot ${automation.dry_run === false && automation.hardware_armed ? "ok" : "warn"}"></span>
           <div>
-            <span>${isZhLang() ? "现场设备" : "Field devices"}</span>
+          <span>${isZhLang() ? "设备输出" : "Device output"}</span>
             <strong>${escapeHtml(hardwareValue)}</strong>
           </div>
         </div>
         <div class="task-runtime-metric">
           <span class="task-runtime-dot neutral"></span>
           <div>
-            <span>${isZhLang() ? "最近巡检" : "Last check"}</span>
+          <span>${isZhLang() ? "最近检查" : "Last check"}</span>
             <strong>${escapeHtml(lastTickValue)}</strong>
           </div>
         </div>
       </div>
-      <div class="task-runtime-actions">
-        <button class="btn btn-pill task-secondary-action" type="button" id="btnTaskRuntimeRefresh">${isZhLang() ? "刷新状态" : "Refresh"}</button>
-        <button class="btn btn-pill" type="button" id="btnTaskRuntimeAuto">${escapeHtml(autoActionLabel)}</button>
-        <button class="btn btn-pill task-secondary-action" type="button" id="btnTaskRuntimeHardware">${escapeHtml(hardwareActionLabel)}</button>
-        <button class="btn btn-pill task-danger-action" type="button" id="btnTaskRuntimeStopAll">${isZhLang() ? "全部暂停并锁定" : "Pause all & lock"}</button>
+      <div class="task-runtime-safe-actions">
+        <button class="btn btn-pill task-secondary-action" type="button" id="btnTaskRuntimeRefresh">${isZhLang() ? "刷新" : "Refresh"}</button>
+        <button class="btn btn-pill task-secondary-action" type="button" id="btnTaskRuntimeAuto">${escapeHtml(autoActionLabel)}</button>
+        <button class="btn btn-pill ${hardwareOutputReleased() ? "task-secondary-action" : ""}" type="button" id="btnTaskRuntimeHardware">${escapeHtml(hardwareActionLabel)}</button>
+        <button class="btn btn-pill task-danger-action" type="button" id="btnTaskRuntimeStopAll">${isZhLang() ? "停止并锁定" : "Stop and lock"}</button>
       </div>
     </div>
   `;
@@ -3004,7 +3519,7 @@ function renderTaskRuntimePanelV2() {
 
   $("btnTaskRuntimeHardware").onclick = async () => {
     const enabling = !(automation.dry_run === false && automation.hardware_armed);
-    if (enabling && !window.confirm(isZhLang() ? "确认让计划接管现场设备？请先确认设备与工况安全。" : "Allow plans to take control of field devices?")) return;
+    if (enabling && !window.confirm(isZhLang() ? "确认放行设备输出？放行后，已启用的计划可以控制继电器和 PWM。请先确认现场安全。" : "Release device output? Enabled plans may control relays and PWM.")) return;
     await saveAutomationConfig({
       ...basePayload(),
       dry_run: !enabling,
@@ -3014,36 +3529,39 @@ function renderTaskRuntimePanelV2() {
   };
 
   $("btnTaskRuntimeStopAll").onclick = async () => {
-    if (!window.confirm(isZhLang() ? "确认停止全部计划并锁定现场设备？" : "Stop all plans and lock field devices?")) return;
-    await saveAutomationConfig({
-      ...basePayload(),
-      automation_enabled: false,
-      dry_run: true,
-      hardware_armed: false
-    });
+    if (!window.confirm(isZhLang() ? "确认全部停止？系统会暂停计划判断，并把输出恢复到安全状态。" : "Stop all plans and return outputs to the safe state?")) return;
+    await stopAllOutputs();
     await refreshTasksPage();
   };
 }
 
-function bindPlanEditorInputs(kind) {
+function bindPlanEditorInputs(kind, onDraftChange) {
+  const markDraftChange = () => {
+    if (typeof onDraftChange === "function") onDraftChange();
+  };
   if (kind === "rule") {
-    ["ruleFormName", "ruleFormSourceKey", "ruleFormAggregation", "ruleFormWindowValue", "ruleFormWindowUnit", "ruleFormWindowSec", "ruleFormThreshold", "ruleFormSustainSec", "ruleFormCooldownSec", "ruleFormMaxRunsPerHour", "ruleFormOperator", "ruleFormTaskId", "ruleFormActiveStart", "ruleFormActiveEnd", "ruleFormDescription"].forEach((id) => {
+    ["ruleFormName", "ruleFormCooldownSec", "ruleFormMaxRunsPerHour", "ruleFormTaskId", "ruleFormActiveStart", "ruleFormActiveEnd", "ruleFormDescription"].forEach((id) => {
       const el = $(id);
       if (!el) return;
       const eventName = el.tagName === "SELECT" ? "onchange" : "oninput";
       el[eventName] = () => {
-        if (id === "ruleFormSourceKey") syncRuleSourceFields();
-        if (id === "ruleFormAggregation") syncRuleValueModeUi();
         renderRuleSummaryDraft();
+        markDraftChange();
       };
     });
-    ["ruleFormEnabled", "ruleFormFreshData"].forEach((id) => {
+    ["ruleFormEnabled"].forEach((id) => {
       const el = $(id);
-      if (el) el.onchange = renderRuleSummaryDraft;
+      if (el) el.onchange = () => {
+        renderRuleSummaryDraft();
+        markDraftChange();
+      };
     });
     for (let index = 0; index < 7; index += 1) {
       const el = $(`ruleActiveDay${index}`);
-      if (el) el.onchange = renderRuleSummaryDraft;
+      if (el) el.onchange = () => {
+        renderRuleSummaryDraft();
+        markDraftChange();
+      };
     }
     return;
   }
@@ -3051,20 +3569,30 @@ function bindPlanEditorInputs(kind) {
   $("scheduleFormType").onchange = () => {
     syncScheduleVisibility();
     renderScheduleSummaryDraft();
+    markDraftChange();
   };
   ["scheduleFormName", "scheduleFormTaskId", "scheduleFormStartAt", "scheduleFormStartAtInterval", "scheduleFormTimeOfDay", "scheduleFormIntervalValue", "scheduleFormIntervalUnit", "scheduleFormEndAt", "scheduleFormCooldownSec", "scheduleFormActiveStart", "scheduleFormActiveEnd", "scheduleFormDescription"].forEach((id) => {
     const el = $(id);
     if (!el) return;
     const eventName = el.tagName === "SELECT" ? "onchange" : "oninput";
-    el[eventName] = renderScheduleSummaryDraft;
+    el[eventName] = () => {
+      renderScheduleSummaryDraft();
+      markDraftChange();
+    };
   });
   ["scheduleFormEnabled", "scheduleFormSkipIfRunning"].forEach((id) => {
     const el = $(id);
-    if (el) el.onchange = renderScheduleSummaryDraft;
+    if (el) el.onchange = () => {
+      renderScheduleSummaryDraft();
+      markDraftChange();
+    };
   });
   for (let index = 0; index < 7; index += 1) {
     const el = $(`scheduleActiveDay${index}`);
-    if (el) el.onchange = renderScheduleSummaryDraft;
+    if (el) el.onchange = () => {
+      renderScheduleSummaryDraft();
+      markDraftChange();
+    };
   }
 }
 
@@ -3099,16 +3627,21 @@ function bindUnifiedPlanWorkspace(kind, item) {
   }
 
   bindDraftTypeSwitch(renderPlanWorkspace);
-  bindPlanEditorInputs(kind);
+  TASK_STATE.onPlanDraftChange = () => syncPlanDraftVisual(kind, item);
+  bindPlanEditorInputs(kind, TASK_STATE.onPlanDraftChange);
+  syncPlanDraftVisual(kind, item);
   const enableId = kind === "rule" ? "ruleFormEnabled" : "scheduleFormEnabled";
-  if ($(enableId)) {
-    $(enableId).onchange = () => {
-      setPlanStatus(kind, planToggleDraftStatusText($(enableId).checked), "warn");
-      if ($("planStatusMessage")) {
-        $("planStatusMessage").textContent = planStatusMessage(kind);
-        $("planStatusMessage").className = `mini task-status-pill ${planStatusTone(kind) || "info"}`;
-      }
+  const enableInput = $(enableId);
+  if (enableInput) {
+    const syncEnableDraftStatus = () => {
+      if (kind === "rule") renderRuleSummaryDraft();
+      else renderScheduleSummaryDraft();
+      syncPlanEnableLabel(kind);
+      syncPlanDraftVisual(kind, item);
+      updatePlanStatusLine(kind, planToggleDraftStatusText(enableInput.checked), "warn");
     };
+    enableInput.onchange = syncEnableDraftStatus;
+    enableInput.onclick = () => window.setTimeout(syncEnableDraftStatus, 0);
   }
 
   if ($("btnPlanOpenActionConfig")) {
@@ -3167,8 +3700,15 @@ function bindUnifiedPlanWorkspace(kind, item) {
   $("btnPlanCheck").onclick = async () => {
     const id = kind === "rule" ? $("ruleFormId").value.trim() : $("scheduleFormId").value.trim();
     if (!id || id.startsWith("new_")) {
-      setPlanStatus(kind, isZhLang() ? "请先保存计划，再检查配置。" : "Save the plan before checking.", "warn");
-      renderPlanWorkspace();
+      updatePlanStatusLine(kind, isZhLang() ? "请先保存计划，再判断当前数据。" : "Save the plan before checking current data.", "warn");
+      return;
+    }
+    if (currentPlanHasUnsavedChanges(kind, item)) {
+      updatePlanStatusLine(
+        kind,
+        isZhLang() ? "当前有未保存修改。请先保存计划，再判断当前数据。" : "There are unsaved changes. Save the plan before checking current data.",
+        "warn"
+      );
       return;
     }
     try {
@@ -3189,23 +3729,38 @@ function bindUnifiedPlanWorkspace(kind, item) {
     const taskId = kind === "rule" ? $("ruleFormTaskId").value : $("scheduleFormTaskId").value;
     const id = kind === "rule" ? $("ruleFormId").value.trim() : $("scheduleFormId").value.trim();
     if (!taskId) return;
+    if (!id || id.startsWith("new_")) {
+      updatePlanStatusLine(kind, isZhLang() ? "请先保存计划，再执行一次。" : "Save the plan before running once.", "warn");
+      return;
+    }
+    if (currentPlanHasUnsavedChanges(kind, item)) {
+      updatePlanStatusLine(
+        kind,
+        isZhLang() ? "当前有未保存修改。请先保存计划，再执行一次。" : "There are unsaved changes. Save the plan before running once.",
+        "warn"
+      );
+      return;
+    }
     const name = taskNameById(taskId);
     const confirmText = kind === "rule"
       ? (isZhLang()
-          ? `将手动执行一次“${name}”，不会先判断当前条件。请确认现场设备安全。`
+          ? `将直接执行一次这条计划的“${name}”，不会先判断当前条件。请确认设备与工况安全。`
           : `Run "${name}" once now without checking the current condition first?`)
       : (isZhLang()
-          ? `将立刻执行一次“${name}”。请确认现场设备安全。`
+          ? `将直接执行一次这条计划的“${name}”。请确认设备与工况安全。`
           : `Run "${name}" now with real hardware output?`);
     if (!window.confirm(confirmText)) return;
     try {
       const res = kind === "schedule" && id && !id.startsWith("new_")
-        ? await triggerActionSchedule(id, { dryRun: false })
-        : await executeActionTask(taskId, { dryRun: false, source: `manual-plan:${id || kind}` });
-      setPlanStatus(kind, `${logMessageLabel(res.message)} | ${isZhLang() ? "记录" : "Log"} #${res.task_result?.log_id ?? res.log_id ?? "-"}`, "ok");
+        ? await triggerActionSchedule(id, { dryRun: false, asyncRun: true })
+        : await executeActionTask(taskId, { dryRun: false, source: `manual-plan:${id || kind}`, asyncRun: true });
+      const job = res.task_result || res;
+      const jobText = job?.job_id ? ` #${job.job_id}` : "";
+      setPlanStatus(kind, isZhLang() ? `已提交执行${jobText}，可在运行记录查看结果。` : `Run submitted${jobText}. Check logs for the result.`, "ok");
       await refreshTasksPage();
     } catch (error) {
-      setPlanStatus(kind, error.message || String(error), "danger");
+      const message = error.message || String(error);
+      setPlanStatus(kind, message, "danger");
       renderPlanWorkspace();
     }
   };
@@ -3219,13 +3774,12 @@ function renderUnifiedPlanWorkspace() {
   if (!workspace) return;
 
   const enableId = kind === "rule" ? "ruleFormEnabled" : "scheduleFormEnabled";
+  const initialEnabled = item ? item.enabled !== false : true;
   const editor = kind === "rule" ? renderRulePlanEditorV2(item) : renderSchedulePlanEditorV2(item);
   const checkLabel = kind === "rule"
-    ? (isZhLang() ? "现在检查" : "Check now")
-    : (isZhLang() ? "预览下次执行" : "Preview next run");
-  const runLabel = kind === "rule"
-    ? (isZhLang() ? "手动执行动作" : "Run action")
-    : (isZhLang() ? "现在执行一次" : "Run now");
+    ? (isZhLang() ? "检查条件" : "Check conditions")
+    : (isZhLang() ? "查看下次时间" : "Preview next run");
+  const runLabel = isZhLang() ? "执行一次" : "Run once";
   const lastActionLabel = item
     ? (isZhLang() ? "删除计划" : "Delete plan")
     : (isZhLang() ? "取消新建" : "Cancel");
@@ -3246,14 +3800,13 @@ function renderUnifiedPlanWorkspace() {
               ${item ? `<div class="task-badge-row">${planHeadBadgesV2(kind, item)}</div>` : renderDraftTypeSwitch(kind)}
             </div>
             <label class="task-inline-toggle">
-              <span>${isZhLang() ? "启用" : "Enabled"}</span>
+              <span id="planEnableLabel">${escapeHtml(planEnableLabelText(initialEnabled))}</span>
               <input id="${enableId}" type="checkbox" />
               <span class="task-inline-toggle-ui"></span>
             </label>
           </div>
         </div>
         <div class="task-plan-detail-scroll">
-          ${renderPlanStatusBannerV2(kind, item)}
           ${editor}
           <div class="task-status-line">${statusText ? `<span id="planStatusMessage" class="mini task-status-pill ${escapeHtml(statusTone)}">${escapeHtml(statusText)}</span>` : ""}</div>
         </div>
@@ -3451,7 +4004,6 @@ export async function initTasksPage() {
 
   root.innerHTML = `
     <div class="task-page task-page-v2">
-      <div id="taskRuntimePanel" class="card task-runtime-card"></div>
       <div id="taskTabBar" class="ac-subtabs task-subtabs"></div>
       <div id="taskWorkspace"></div>
     </div>

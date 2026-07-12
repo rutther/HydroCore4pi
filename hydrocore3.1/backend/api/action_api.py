@@ -6,7 +6,9 @@ from ..services.action_executor import (
     execute_action_unit,
     latest_task_activity_map,
     list_action_logs,
+    stop_all_outputs,
 )
+from ..services.action_jobs import get_action_job, list_action_jobs, start_action_job
 from ..services.action_scheduler import (
     automation_runtime_status,
     evaluate_action_rule,
@@ -48,6 +50,32 @@ def _json_payload() -> dict:
     return request.get_json(force=True) or {}
 
 
+def _real_action_preflight(kind: str, target_id: str, dry_run: bool):
+    if dry_run:
+        return None
+
+    units = []
+    if kind == "action_unit":
+        units.append(get_action_unit(target_id))
+    elif kind == "task":
+        task = get_action_task(target_id)
+        if not task.get("enabled", True):
+            return "任务已停用，不能执行"
+        for step in task.get("steps", []):
+            if step.get("step_type") == "run_action_unit":
+                units.append(get_action_unit(step["action_unit_id"]))
+    else:
+        return f"unsupported action kind: {kind}"
+
+    for unit in units:
+        if not unit.get("enabled", True):
+            return f"动作已停用，不能执行: {unit.get('name') or unit.get('id')}"
+        output = get_actuator(unit["output_id"])
+        if not output.get("enabled", True):
+            return f"输出设备已停用，不能执行: {output.get('name') or output.get('id')}"
+    return None
+
+
 @bp.get("/summary")
 def api_action_summary():
     return jsonify({"ok": True, **action_runtime_summary(), "automation": automation_runtime_status()}), 200
@@ -67,6 +95,16 @@ def api_automation_start():
 @bp.post("/automation/stop")
 def api_automation_stop():
     return jsonify({"ok": True, **stop_automation_thread()}), 200
+
+
+@bp.post("/output/stop-all")
+def api_output_stop_all():
+    result = stop_all_outputs(source="manual-stop-all")
+    status = automation_runtime_status()
+    if not result.get("ok") and "error" not in result:
+        result["error"] = result.get("message") or "Failed to set outputs to safe state"
+    status_code = 200 if result.get("status") == "partial" else (200 if result.get("ok") else 500)
+    return jsonify({**result, "automation": status}), status_code
 
 
 @bp.put("/automation/config")
@@ -107,6 +145,11 @@ def api_actuator_detail(item_id: str):
 def api_actuator_put(item_id: str):
     try:
         payload = _json_payload()
+        try:
+            existing = get_actuator(item_id)
+            payload = {**existing, **payload}
+        except FileNotFoundError:
+            pass
         payload["id"] = item_id
         return jsonify({"ok": True, "item": save_actuator(payload)}), 200
     except Exception as exc:
@@ -172,10 +215,18 @@ def api_unit_delete(item_id: str):
 @bp.post("/units/<string:item_id>/execute")
 def api_unit_execute(item_id: str):
     payload = _json_payload()
+    dry_run = False
+    source = str(payload.get("source") or "manual").strip() or "manual"
+    if bool(payload.get("async", False)):
+        blocked = _real_action_preflight("action_unit", item_id, dry_run)
+        if blocked:
+            return jsonify({"ok": False, "status": "blocked", "error": blocked, "message": blocked}), 400
+        result = start_action_job("action_unit", item_id, source=source, dry_run=dry_run)
+        return jsonify(result), 202
     result = execute_action_unit(
         item_id,
-        source=str(payload.get("source") or "manual").strip() or "manual",
-        dry_run=bool(payload.get("dry_run", True)),
+        source=source,
+        dry_run=dry_run,
     )
     return jsonify(result), 200 if result.get("ok") else 400
 
@@ -234,10 +285,18 @@ def api_task_delete(item_id: str):
 @bp.post("/tasks/<string:item_id>/execute")
 def api_task_execute(item_id: str):
     payload = _json_payload()
+    dry_run = False
+    source = str(payload.get("source") or "manual").strip() or "manual"
+    if bool(payload.get("async", False)):
+        blocked = _real_action_preflight("task", item_id, dry_run)
+        if blocked:
+            return jsonify({"ok": False, "status": "blocked", "error": blocked, "message": blocked}), 400
+        result = start_action_job("task", item_id, source=source, dry_run=dry_run)
+        return jsonify(result), 202
     result = execute_action_task(
         item_id,
-        source=str(payload.get("source") or "manual").strip() or "manual",
-        dry_run=bool(payload.get("dry_run", True)),
+        source=source,
+        dry_run=dry_run,
     )
     return jsonify(result), 200 if result.get("ok") else 400
 
@@ -295,10 +354,26 @@ def api_rule_delete(item_id: str):
 @bp.post("/rules/<string:item_id>/evaluate")
 def api_rule_evaluate(item_id: str):
     payload = _json_payload()
+    execute_if_match = bool(payload.get("execute_if_match", False))
+    dry_run = not execute_if_match
+    async_run = bool(payload.get("async", False))
+    if execute_if_match and async_run:
+        result = evaluate_action_rule(item_id, dry_run=dry_run, execute_if_match=False)
+        if result.get("can_fire"):
+            rule = get_action_rule(item_id)
+            blocked = _real_action_preflight("task", rule["task_id"], dry_run)
+            if blocked:
+                return jsonify({"ok": False, "status": "blocked", "error": blocked, "message": blocked, "rule_result": result}), 400
+            job = start_action_job("task", rule["task_id"], source=f"rule-test:{rule['id']}", dry_run=dry_run)
+            result["task_result"] = job
+            result["message"] = job.get("message") or "Action accepted"
+            return jsonify(result), 202
+        return jsonify(result), 200 if result.get("ok") else 400
+
     result = evaluate_action_rule(
         item_id,
-        dry_run=bool(payload.get("dry_run", True)),
-        execute_if_match=bool(payload.get("execute_if_match", False)),
+        dry_run=dry_run,
+        execute_if_match=execute_if_match,
     )
     return jsonify(result), 200 if result.get("ok") else 400
 
@@ -356,9 +431,25 @@ def api_schedule_delete(item_id: str):
 @bp.post("/schedules/<string:item_id>/trigger")
 def api_schedule_trigger(item_id: str):
     payload = _json_payload()
+    dry_run = False
+    if bool(payload.get("async", False)):
+        schedule = get_action_schedule(item_id)
+        preview = preview_action_schedule(schedule)
+        blocked = _real_action_preflight("task", schedule["task_id"], dry_run)
+        if blocked:
+            return jsonify({"ok": False, "status": "blocked", "error": blocked, "message": blocked, "schedule": schedule, "preview": preview}), 400
+        job = start_action_job("task", schedule["task_id"], source=f"schedule-test:{schedule['id']}", dry_run=dry_run)
+        return jsonify({
+            "ok": True,
+            "schedule": schedule,
+            "preview": preview,
+            "task_result": job,
+            "dry_run": dry_run,
+            "message": job.get("message") or "Action accepted",
+        }), 202
     result = trigger_action_schedule(
         item_id,
-        dry_run=bool(payload.get("dry_run", True)),
+        dry_run=dry_run,
     )
     return jsonify(result), 200 if result.get("ok") else 400
 
@@ -368,5 +459,24 @@ def api_action_logs():
     try:
         limit = int(request.args.get("limit", 100))
         return jsonify({"ok": True, "items": list_action_logs(limit)}), 200
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+
+@bp.get("/jobs")
+def api_action_jobs():
+    try:
+        limit = int(request.args.get("limit", 50))
+        return jsonify({"ok": True, "items": list_action_jobs(limit)}), 200
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+
+@bp.get("/jobs/<string:job_id>")
+def api_action_job_detail(job_id: str):
+    try:
+        return jsonify({"ok": True, "job": get_action_job(job_id)}), 200
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400

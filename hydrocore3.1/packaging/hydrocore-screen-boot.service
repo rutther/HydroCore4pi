@@ -1,0 +1,10 @@
+[Unit]
+Description=Activate HydroCore screen direction for this boot
+DefaultDependencies=no
+After=local-fs.target systemd-udev-settle.service
+Wants=systemd-udev-settle.service
+Before=hydrocore-kiosk.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env HYDROCORE_SCREEN_ACTIVATE=1 /usr/bin/hydrocore-apply-screen-orientation

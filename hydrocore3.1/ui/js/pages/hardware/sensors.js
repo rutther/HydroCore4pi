@@ -111,7 +111,7 @@ function renderProtoTable(container, protocolObj) {
     th.textContent = h;
     th.style.textAlign = "left";
     th.style.padding = "6px 8px";
-    th.style.borderBottom = "1px solid rgba(0,255,0,0.35)";
+    th.style.borderBottom = "1px solid var(--accent-line)";
     th.style.color = "rgba(255,255,255,0.9)";
     hr.appendChild(th);
   }

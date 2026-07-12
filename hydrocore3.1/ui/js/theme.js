@@ -1,4 +1,4 @@
-﻿// 文件：ui/js/theme.js
+// 文件：ui/js/theme.js
 // 职责：主题（Theme，样式主题）管理：初始化 + 切换
 // 约定：主题 CSS 放在 /ui/styles/themes/*.css
 // 当前内置：green-cyber.css / blue-cyber.css
@@ -6,8 +6,8 @@
 const STORAGE_KEY = "hydrocore_theme";
 
 const THEMES = {
-  "green-cyber": "/ui/styles/themes/green-cyber.css?v=industrial-ui-16",
-  "blue-cyber": "/ui/styles/themes/blue-cyber.css?v=industrial-ui-16",
+  "green-cyber": "/ui/styles/themes/green-cyber.css?v=task-plan-ui-algo-20260711-1",
+  "blue-cyber": "/ui/styles/themes/blue-cyber.css?v=task-plan-ui-algo-20260711-1",
 };
 
 function ensureThemeLinkEl() {
@@ -52,3 +52,4 @@ export function getTheme() {
   const saved = localStorage.getItem(STORAGE_KEY);
   return (saved && THEMES[saved]) ? saved : "green-cyber";
 }
+

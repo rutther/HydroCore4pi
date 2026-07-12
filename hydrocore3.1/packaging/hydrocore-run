@@ -1,0 +1,34 @@
+#!/bin/sh
+set -eu
+
+ENV_FILE=/etc/hydrocore/hydrocore.env
+if [ -r "$ENV_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+fi
+
+APP_DIR="${HYDROCORE_APP_DIR:-/opt/hydrocore}"
+VENDOR_PYTHON="${HYDROCORE_VENDOR_PYTHON:-$APP_DIR/vendor/python}"
+VENDOR_LIB="${HYDROCORE_VENDOR_LIB:-$APP_DIR/vendor/lib}"
+if [ -d "$VENDOR_PYTHON" ]; then
+  export PYTHONPATH="$APP_DIR:$VENDOR_PYTHON${PYTHONPATH:+:$PYTHONPATH}"
+else
+  export PYTHONPATH="$APP_DIR${PYTHONPATH:+:$PYTHONPATH}"
+fi
+if [ -d "$VENDOR_LIB" ]; then
+  export LD_LIBRARY_PATH="$VENDOR_LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+
+HOST="${HYDROCORE_HOST:-0.0.0.0}"
+PORT="${HYDROCORE_PORT:-5000}"
+BIND="${HYDROCORE_BIND:-${HOST}:${PORT}}"
+WORKERS="${HYDROCORE_GUNICORN_WORKERS:-1}"
+THREADS="${HYDROCORE_GUNICORN_THREADS:-4}"
+TIMEOUT="${HYDROCORE_GUNICORN_TIMEOUT:-120}"
+
+exec /usr/bin/python3 -m gunicorn \
+  --workers "$WORKERS" \
+  --threads "$THREADS" \
+  --timeout "$TIMEOUT" \
+  --bind "$BIND" \
+  backend.app:app

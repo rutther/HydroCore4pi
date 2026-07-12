@@ -1,0 +1,181 @@
+#!/bin/sh
+set -eu
+
+ENV_FILE=/etc/hydrocore/hydrocore.env
+if [ -r "$ENV_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+fi
+
+URL="${HYDROCORE_KIOSK_URL:-http://127.0.0.1:5000/ui/}"
+PROFILE="${HYDROCORE_KIOSK_PROFILE:-/var/lib/hydrocore/kiosk/chromium}"
+PROFILE_VERSION="${HYDROCORE_KIOSK_PROFILE_VERSION:-20260709-hmi-shell-v1}"
+LABWC_CONFIG_DIR="${HYDROCORE_LABWC_CONFIG_DIR:-/var/lib/hydrocore/kiosk/labwc}"
+OSK_LOG="${HYDROCORE_OSK_LOG:-/var/lib/hydrocore/kiosk/squeekboard.log}"
+export HYDROCORE_SCREEN_ACTIVE_ENV="${HYDROCORE_SCREEN_ACTIVE_ENV:-/var/lib/hydrocore/runtime/screen_kiosk.env}"
+
+if command -v chromium >/dev/null 2>&1; then
+  BROWSER="$(command -v chromium)"
+elif command -v chromium-browser >/dev/null 2>&1; then
+  BROWSER="$(command -v chromium-browser)"
+else
+  echo "HydroCore kiosk cannot find chromium or chromium-browser" >&2
+  exit 127
+fi
+
+env_flag() {
+  case "$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+prepare_profile() {
+  parent="$(dirname "$PROFILE")"
+  marker="$PROFILE/.hydrocore-profile-$PROFILE_VERSION"
+  mkdir -p "$parent"
+  if [ -d "$PROFILE" ] && [ ! -f "$marker" ]; then
+    backup="$parent/chromium.legacy.$(date +%Y%m%d%H%M%S)"
+    if ! mv "$PROFILE" "$backup"; then
+      PROFILE="$parent/chromium.clean.$PROFILE_VERSION"
+      marker="$PROFILE/.hydrocore-profile-$PROFILE_VERSION"
+    fi
+  fi
+  mkdir -p "$PROFILE/Default"
+  cat > "$PROFILE/Default/Preferences" <<'EOF'
+{
+  "browser": {
+    "has_seen_welcome_page": true
+  },
+  "credentials_enable_service": false,
+  "profile": {
+    "password_manager_enabled": false
+  },
+  "translate": {
+    "enabled": false
+  }
+}
+EOF
+  touch "$PROFILE/First Run"
+  touch "$marker"
+}
+
+prepare_labwc_config() {
+  mkdir -p "$LABWC_CONFIG_DIR"
+  cat > "$LABWC_CONFIG_DIR/autostart" <<'EOF'
+# HydroCore kiosk intentionally starts only the app session from labwc -S.
+EOF
+  cat > "$LABWC_CONFIG_DIR/environment" <<'EOF'
+QT_WAYLAND_DISABLE_WINDOWDECORATION=1
+XCURSOR_SIZE=24
+XKB_DEFAULT_MODEL=pc105
+EOF
+  cat > "$LABWC_CONFIG_DIR/rc.xml" <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <theme>
+    <name>PiXflat</name>
+    <cornerRadius>0</cornerRadius>
+    <keepBorder>no</keepBorder>
+    <font place="ActiveWindow"><name>PibotoLt</name><size>12</size></font>
+    <font place="InactiveWindow"><name>PibotoLt</name><size>12</size></font>
+    <font place="OnScreenDisplay"><name>PibotoLt</name><size>12</size></font>
+  </theme>
+  <keyboard>
+    <numlock>off</numlock>
+  </keyboard>
+  <mouse>
+    <default />
+  </mouse>
+  <windowRules>
+    <windowRule identifier="chromium" serverDecoration="no" />
+    <windowRule identifier="Chromium" serverDecoration="no" />
+  </windowRules>
+  <snapping>
+    <range>0</range>
+    <topMaximize>no</topMaximize>
+  </snapping>
+</openbox_config>
+EOF
+}
+
+apply_runtime_screen() {
+  screen_env="${HYDROCORE_SCREEN_ACTIVE_ENV:-/var/lib/hydrocore/runtime/screen_kiosk.env}"
+  if [ -r "$screen_env" ]; then
+    # shellcheck disable=SC1090
+    . "$screen_env"
+  fi
+  transform="${HYDROCORE_SCREEN_TRANSFORM:-normal}"
+  output="${HYDROCORE_SCREEN_OUTPUT:-DSI-1}"
+  if [ "$transform" != "normal" ] && command -v wlr-randr >/dev/null 2>&1; then
+    wlr-randr --output "$output" --transform "$transform" || true
+  fi
+}
+
+start_osk() {
+  if ! env_flag "${HYDROCORE_OSK_ENABLED:-1}"; then
+    return 0
+  fi
+  osk="${HYDROCORE_OSK_COMMAND:-squeekboard}"
+  if ! command -v "$osk" >/dev/null 2>&1; then
+    echo "HydroCore kiosk cannot find on-screen keyboard: $osk" >&2
+    return 0
+  fi
+  mkdir -p "$(dirname "$OSK_LOG")"
+  "$osk" >"$OSK_LOG" 2>&1 &
+  osk_pid="$!"
+  sleep 0.3
+  if ! kill -0 "$osk_pid" 2>/dev/null; then
+    echo "HydroCore on-screen keyboard exited early; see $OSK_LOG" >&2
+  fi
+}
+
+run_session() {
+  apply_runtime_screen
+  start_osk
+  exec "$BROWSER" \
+  --kiosk "$URL" \
+  --lang=zh-CN \
+  --no-first-run \
+  --no-default-browser-check \
+  --noerrdialogs \
+  --disable-background-networking \
+  --disable-infobars \
+  --disable-extensions \
+  --disable-sync \
+  --disable-pinch \
+  --disable-session-crashed-bubble \
+  --disable-translate \
+  --disable-component-update \
+  --disable-features=Translate,TranslateUI,AutofillServerCommunication,OptimizationHints,MediaRouter \
+  --check-for-update-interval=31536000 \
+  --overscroll-history-navigation=0 \
+  --password-store=basic \
+  --user-data-dir="$PROFILE" \
+    --ozone-platform=wayland \
+    --enable-wayland-ime
+}
+
+if [ "${1:-}" = "--session" ]; then
+  run_session
+fi
+
+prepare_profile
+
+COMPOSITOR="${HYDROCORE_KIOSK_COMPOSITOR:-labwc}"
+case "$COMPOSITOR" in
+  labwc)
+    if command -v labwc >/dev/null 2>&1; then
+      prepare_labwc_config
+      exec /usr/bin/labwc -C "$LABWC_CONFIG_DIR" -S "$0 --session"
+    fi
+    echo "HydroCore kiosk requested labwc, but labwc is not installed; falling back to cage" >&2
+    ;;
+  cage)
+    ;;
+  *)
+    echo "HydroCore kiosk unknown compositor '$COMPOSITOR'; falling back to cage" >&2
+    ;;
+esac
+
+exec /usr/bin/cage -s -- "$0" --session

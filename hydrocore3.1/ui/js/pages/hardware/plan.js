@@ -24,6 +24,7 @@ import {
   apiPollerStop
 } from "../../api.js";
 import { STATE } from "../../state.js";
+import { t, applyI18nToDom } from "../../i18n.js";
 
 
 
@@ -31,6 +32,7 @@ import { STATE } from "../../state.js";
 
 
 function $(id) { return document.getElementById(id); }
+let pollerTimer = null;
 
 function safeObj(v) { return (v && typeof v === "object") ? v : {}; }
 function safeArr(v) { return Array.isArray(v) ? v : []; }
@@ -44,8 +46,15 @@ function numOrNull(v) {
 
 function mustPos(n) { return Number.isFinite(n) && n > 0; }
 function mustNonNeg(n) { return Number.isFinite(n) && n >= 0; }
+function tr(key) { return t(key); }
+
+function isPlanPageVisible() {
+  const el = $("subpage-plan");
+  return !el || el.classList.contains("active");
+}
 
 export function initHardwarePlan() {
+  applyI18nToDom();
 
 
 
@@ -62,14 +71,14 @@ export function initHardwarePlan() {
   function setPollerPill(running) {
     if (!elPollerPill) return;
     if (running === true) {
-      elPollerPill.textContent = "RUNNING";
-      elPollerPill.className = "pill";       // 亮一点
+      elPollerPill.textContent = tr("hardware.plan.poller.running");
+      elPollerPill.className = "pill poller-pill running";
     } else if (running === false) {
-      elPollerPill.textContent = "STOPPED";
-      elPollerPill.className = "pill gray";  // 灰一点
+      elPollerPill.textContent = tr("hardware.plan.poller.stopped");
+      elPollerPill.className = "pill poller-pill stopped";
     } else {
-      elPollerPill.textContent = "UNKNOWN";
-      elPollerPill.className = "pill gray";
+      elPollerPill.textContent = tr("hardware.plan.poller.unknown");
+      elPollerPill.className = "pill poller-pill unknown";
     }
   }
   function setPollerButtons(running) {
@@ -80,28 +89,29 @@ export function initHardwarePlan() {
   async function refreshPollerStatus() {
     // 无 DOM 说明 HTML 没加成功：直接返回，不影响 plan 原功能
     if (!elPollerPill || !btnPollerStart || !btnPollerStop) return;
+    if (!isPlanPageVisible()) return;
 
     try {
       const res = await apiPollerStatus();
       const running = Boolean(res && res.running === true);
       setPollerPill(running);
       setPollerButtons(running);
-      setPollerText(running ? "采集线程运行中：主应用涉串口操作已被强制阻断" : "采集线程已停止：扫描/测试/写入等涉串口功能可用");
+      setPollerText(running ? tr("hardware.plan.poller.runningHint") : tr("hardware.plan.poller.stoppedHint"));
     } catch (e) {
       setPollerPill(null);
       setPollerButtons(null);
-      setPollerText(`状态读取失败：${String(e.message || e)}`);
+      setPollerText(`${tr("hardware.plan.poller.statusFailed")}：${String(e.message || e)}`);
     }
   }
 
   if (btnPollerStart) {
     btnPollerStart.onclick = async () => {
       btnPollerStart.disabled = true;
-      setPollerText("启动中...");
+      setPollerText(tr("hardware.plan.poller.starting"));
       try {
         await apiPollerStart();
       } catch (e) {
-        setPollerText(`启动失败：${String(e.message || e)}`);
+        setPollerText(`${tr("hardware.plan.poller.startFailed")}：${String(e.message || e)}`);
       }
       await refreshPollerStatus();
     };
@@ -110,11 +120,11 @@ export function initHardwarePlan() {
   if (btnPollerStop) {
     btnPollerStop.onclick = async () => {
       btnPollerStop.disabled = true;
-      setPollerText("停止中...");
+      setPollerText(tr("hardware.plan.poller.stopping"));
       try {
         await apiPollerStop();
       } catch (e) {
-        setPollerText(`停止失败：${String(e.message || e)}`);
+        setPollerText(`${tr("hardware.plan.poller.stopFailed")}：${String(e.message || e)}`);
       }
       await refreshPollerStatus();
     };
@@ -122,7 +132,8 @@ export function initHardwarePlan() {
 
   // 页面初始化时立刻刷新一次，并每 2 秒刷新一次（可视化联动）
   refreshPollerStatus();
-  setInterval(refreshPollerStatus, 2000);
+  if (pollerTimer) clearInterval(pollerTimer);
+  pollerTimer = setInterval(refreshPollerStatus, 3000);
   // ===== Poller 控制（新增闭环）END =====
 
 
@@ -261,7 +272,7 @@ export function initHardwarePlan() {
     btnCancel.disabled = !editing;
     btnEdit.disabled   = editing;
 
-    setStatus(editing ? "编辑中：仅修改全局元参数（__meta__）" : "只读：全局元参数来自当前 plan");
+    setStatus(editing ? tr("hardware.plan.meta.editing") : tr("hardware.plan.meta.readonly"));
   }
 
   function getMeta(planObj) {
@@ -293,7 +304,7 @@ export function initHardwarePlan() {
       const div = document.createElement("div");
       div.className = "mini";
       div.style.opacity = "0.85";
-      div.textContent = "暂无 plans[]：请先在“采集对象/设备定义”页添加地址与条目。";
+      div.textContent = tr("hardware.plan.entries.empty");
       listBox.appendChild(div);
       return;
     }
@@ -310,7 +321,7 @@ export function initHardwarePlan() {
 
       const title = document.createElement("div");
       title.className = "mini-title";
-      title.textContent = `addr=${addr}   protocol=${proto}   port=${port}`;
+      title.textContent = `${tr("hardware.plan.entries.address")} ${addr} · ${proto} · ${port}`;
 
       const brief = document.createElement("div");
       brief.className = "mini";
@@ -325,7 +336,7 @@ export function initHardwarePlan() {
       const show = names.slice(0, 8).join(", ");
       const more = (names.length > 8) ? ` …(+${names.length - 8})` : "";
 
-      brief.textContent = `条目数：${n}    参数：${show}${more}`;
+      brief.textContent = `${tr("hardware.plan.entries.count")} ${n} · ${tr("hardware.plan.entries.params")}：${show || tr("hardware.plan.entries.none")}${more}`;
 
       card.appendChild(title);
       card.appendChild(brief);
@@ -337,13 +348,13 @@ export function initHardwarePlan() {
   function setRawBox() {
     if (!rawBox) return;
     rawBox.textContent = plan ? pretty(plan) : "";
-    if (rawSt) rawSt.textContent = plan ? "原始 JSON 来自 GET /api/v1/poll/plan" : "";
+    if (rawSt) rawSt.textContent = plan ? tr("hardware.plan.entries.rawHint") : "";
   }
 
   async function load() {
-    setStatus("加载中：GET /api/v1/poll/plan ...");
+    setStatus(tr("hardware.plan.meta.loading"));
     const res = await apiPollPlanGet();
-    if (!res || res.ok !== true) throw new Error("poll plan 返回 ok!=true");
+    if (!res || res.ok !== true) throw new Error(tr("hardware.plan.meta.loadBadResponse"));
 
     plan = safeObj(res.plan);
     plan.__meta__ = safeObj(plan.__meta__);
@@ -353,7 +364,7 @@ export function initHardwarePlan() {
     renderPlansOverview();
     setRawBox();
     setEditing(false);
-    setStatus("已加载");
+    setStatus(tr("hardware.plan.meta.loaded"));
   }
 
   function snapshotMeta() {
@@ -377,14 +388,14 @@ export function initHardwarePlan() {
     // 允许为空：表示“不改动该字段”（但这里我们是编辑 __meta__，所以空表示删除字段回退到“未定义”）
     // 为了稳定：你现在文件里都有值，我这里采用：空 => 不允许保存（避免写出缺字段导致别处逻辑不兼容）
     if (ds === null || dp === null || dr === null || rd === null || mm === null) {
-      return { ok: false, error: "全局参数不允许为空（必须填数字）。" };
+      return { ok: false, error: tr("hardware.plan.meta.errEmpty") };
     }
 
-    if (!mustPos(ds)) return { ok: false, error: "默认采样间隔必须 > 0" };
-    if (!mustPos(dp)) return { ok: false, error: "默认落库周期必须 > 0" };
-    if (!mustNonNeg(dr)) return { ok: false, error: "默认小数位数必须 >= 0" };
-    if (!mustNonNeg(rd)) return { ok: false, error: "数据保留天数必须 >= 0" };
-    if (!mustPos(mm)) return { ok: false, error: "最大库容量必须 > 0" };
+    if (!mustPos(ds)) return { ok: false, error: tr("hardware.plan.meta.errSampling") };
+    if (!mustPos(dp)) return { ok: false, error: tr("hardware.plan.meta.errPersist") };
+    if (!mustNonNeg(dr)) return { ok: false, error: tr("hardware.plan.meta.errRound") };
+    if (!mustNonNeg(rd)) return { ok: false, error: tr("hardware.plan.meta.errRetention") };
+    if (!mustPos(mm)) return { ok: false, error: tr("hardware.plan.meta.errMaxDb") };
 
     return {
       ok: true,
@@ -404,31 +415,31 @@ export function initHardwarePlan() {
 
     const chk = validateMetaFromForm();
     if (!chk.ok) {
-      setStatus(`保存失败：${chk.error}`);
+      setStatus(`${tr("hardware.plan.meta.saveFailed")}：${chk.error}`);
       return;
     }
 
     // 仅修改 __meta__，plans[] 不动
     plan.__meta__ = safeObj(chk.meta);
 
-    setStatus("保存中：PUT /api/v1/poll/plan ...");
+    setStatus(tr("hardware.plan.meta.saving"));
     const res = await apiPollPlanPut(plan);
-    if (!res || res.ok !== true) throw new Error("写入失败：后端返回 ok!=true");
+    if (!res || res.ok !== true) throw new Error(tr("hardware.plan.meta.saveBadResponse"));
 
     // 回读确认
     await load();
-    setStatus(res?.message ? String(res.message) : "已保存");
+    setStatus(res?.message ? String(res.message) : tr("hardware.plan.meta.saved"));
   }
 
   // ---- bind events（覆盖式绑定，不叠加） ----
   btnRefresh.onclick = async () => {
     try { await load(); }
-    catch (e) { setStatus(`加载失败：${String(e.message || e)}`); }
+    catch (e) { setStatus(`${tr("hardware.plan.meta.loadFailed")}：${String(e.message || e)}`); }
   };
 
   btnEdit.onclick = () => {
     if (!plan) {
-      setStatus("尚未加载 plan，无法编辑");
+      setStatus(tr("hardware.plan.meta.notLoaded"));
       return;
     }
     snapshotMeta();
@@ -440,18 +451,18 @@ export function initHardwarePlan() {
     restoreMetaSnap();
     fillMetaForm();
     setEditing(false);
-    setStatus("已取消：恢复到进入编辑前的 __meta__");
+    setStatus(tr("hardware.plan.meta.cancelled"));
   };
 
   btnSave.onclick = async () => {
     try { await saveMeta(); }
-    catch (e) { setStatus(`保存失败：${String(e.message || e)}`); }
+    catch (e) { setStatus(`${tr("hardware.plan.meta.saveFailed")}：${String(e.message || e)}`); }
   };
 
   btnRaw.onclick = () => {
     rawOpen = !rawOpen;
     rawBox.style.display = rawOpen ? "block" : "none";
-    btnRaw.textContent = rawOpen ? "收起原始 JSON" : "展开原始 JSON";
+    btnRaw.textContent = rawOpen ? tr("hardware.plan.entries.hideRaw") : tr("hardware.plan.entries.showRaw");
   };
 
 
@@ -464,7 +475,7 @@ export function initHardwarePlan() {
 
 
   // 初次加载 新版  关于串口状态的检查和 UI 绑定
-  load().catch(e => setStatus(`初始化失败：${String(e.message || e)}`));
+  load().catch(e => setStatus(`${tr("hardware.plan.meta.initFailed")}：${String(e.message || e)}`));
 
   // Step1：即使 HTML 未加，也先刷新一次状态并尝试绑定（有则启用，无则跳过）
   refreshPollerStatus().catch(() => {});
@@ -477,6 +488,5 @@ export function renderHardwarePlan(ctx) {
   // 只负责绑定与加载逻辑
   initHardwarePlan();
 }
-
 
 

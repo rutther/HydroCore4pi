@@ -1,0 +1,40 @@
+[Unit]
+Description=HydroCore local screen kiosk
+Requires=hydrocore.service
+Wants=hydrocore-screen-boot.service
+After=hydrocore.service hydrocore-screen-boot.service systemd-user-sessions.service
+Conflicts=display-manager.service lightdm.service gdm3.service sddm.service getty@tty1.service
+ConditionPathExists=/usr/bin/cage
+StartLimitIntervalSec=60
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=hydrocore
+Group=hydrocore
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+UtmpIdentifier=tty1
+UtmpMode=user
+WorkingDirectory=/var/lib/hydrocore
+RuntimeDirectory=hydrocore-kiosk
+RuntimeDirectoryMode=0700
+Environment=HOME=/var/lib/hydrocore
+Environment=XDG_RUNTIME_DIR=/run/hydrocore-kiosk
+EnvironmentFile=-/etc/hydrocore/hydrocore.env
+ExecStart=/usr/bin/hydrocore-kiosk-launch
+Restart=always
+RestartSec=5
+TimeoutStopSec=10
+KillMode=mixed
+LogRateLimitIntervalSec=30s
+LogRateLimitBurst=2000
+
+[Install]
+WantedBy=multi-user.target

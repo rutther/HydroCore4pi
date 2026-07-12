@@ -1,0 +1,13 @@
+[Unit]
+Description=Install bundled HydroCore local-screen dependencies
+Documentation=file:/opt/hydrocore/README.md
+After=multi-user.target hydrocore.service
+ConditionPathExists=/opt/hydrocore/offline-debs/Packages
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/hydrocore-kiosk-deps-install
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

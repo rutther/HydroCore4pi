@@ -5,11 +5,33 @@ case "${1:-status}" in
   status)
     systemctl status hydrocore --no-pager
     ;;
+  kiosk-status)
+    systemctl status hydrocore-kiosk --no-pager
+    ;;
+  watchdog-status)
+    systemctl status hydrocore-watchdog.timer --no-pager
+    ;;
+  selfcheck)
+    shift
+    exec hydrocore-selfcheck "$@"
+    ;;
   start|stop|restart)
     systemctl "$1" hydrocore
     ;;
+  kiosk-start)
+    systemctl start hydrocore-kiosk
+    ;;
+  kiosk-stop)
+    systemctl stop hydrocore-kiosk
+    ;;
+  kiosk-restart)
+    systemctl restart hydrocore-kiosk
+    ;;
   logs)
     journalctl -u hydrocore -n "${2:-120}" --no-pager
+    ;;
+  kiosk-logs)
+    journalctl -u hydrocore-kiosk -n "${2:-120}" --no-pager
     ;;
   url)
     port="$(sed -n 's/^HYDROCORE_PORT=//p' /etc/hydrocore/hydrocore.env | tail -n 1)"
@@ -17,8 +39,7 @@ case "${1:-status}" in
     echo "http://${ip:-127.0.0.1}:${port:-5000}/ui/"
     ;;
   *)
-    echo "Usage: hydrocore-ctl {status|start|stop|restart|logs [n]|url}" >&2
+    echo "Usage: hydrocore-ctl {status|selfcheck|start|stop|restart|logs [n]|kiosk-status|kiosk-start|kiosk-stop|kiosk-restart|kiosk-logs [n]|watchdog-status|url}" >&2
     exit 2
     ;;
 esac
-

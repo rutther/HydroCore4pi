@@ -36,6 +36,16 @@ export function applyI18nToDom() {
     el.textContent = t(k);
   });
 
+  document.querySelectorAll("[data-i18n-title]").forEach(el => {
+    const k = el.getAttribute("data-i18n-title");
+    el.setAttribute("title", t(k));
+  });
+
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+    const k = el.getAttribute("data-i18n-placeholder");
+    el.setAttribute("placeholder", t(k));
+  });
+
   // 2) 顶部 tabs / sub-tabs 文案（由 app.js 负责渲染时填充）
 }
 

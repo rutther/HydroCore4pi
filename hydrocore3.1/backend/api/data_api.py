@@ -12,7 +12,11 @@
 #         to=YYYY-MM-DD HH:MM:SS     （缺省为“现在”）
 #         limit=整数                 （每序列最大点数上限，JSON 2万，CSV 100万）
 #   - /api/v1/data/export.csv
-#       参数同 /series，但当前 CSV 对分桶仅支持 avg/min/max（三选一）；ohlc 也可扩展为四列导出（此版未实现）。
+#       参数同 /series；CSV 支持 raw 与 avg/min/max/last。
+
+import csv
+import io
+import re
 
 from flask import Blueprint, request, jsonify, Response
 from typing import Optional, Tuple, List, Dict, Any
@@ -92,6 +96,16 @@ def _parse_series_args(args) -> List[Tuple[str,int,str]]:
             # 跳过非法项
             continue
     return out
+
+def _csv_line(values) -> str:
+    buf = io.StringIO()
+    writer = csv.writer(buf, lineterminator="\n")
+    writer.writerow(values)
+    return buf.getvalue()
+
+def _safe_filename_part(value: str) -> str:
+    text = re.sub(r"[^A-Za-z0-9_.-]+", "-", str(value or "").strip())
+    return text.strip("-._") or "data"
 
 @bp.get("/series")
 def series():
@@ -355,7 +369,7 @@ def series():
 
 @bp.get("/export.csv")
 def export_csv():
-    # 多序列导出：目前按“逐序列顺序输出”，列为 ts,protocol,address,parameter,value
+    # 多序列导出：按“逐序列顺序输出”，列为 ts,protocol,address,parameter,value
     series_list = _parse_series_args(request.args)
     if not series_list:
         # 兼容旧单序列
@@ -375,8 +389,14 @@ def export_csv():
     limit  = _parse_int(request.args.get("limit"), default=1000000, lo=1, hi=1000000)
     t_from, t_to = _time_range(request.args)
 
+    if bucket != "raw":
+        if bucket not in _BUCKET_SEC and bucket not in _BUCKET_CAL:
+            return jsonify({"ok": False, "error": "不支持的 bucket"}), 400
+        if agg not in ("avg", "min", "max", "last"):
+            return jsonify({"ok": False, "error": "CSV 导出支持 avg|min|max|last"}), 400
+
     def _gen():
-        yield "ts,protocol,address,parameter,value\n"
+        yield _csv_line(["ts", "protocol", "address", "parameter", "value"])
         with get_conn() as conn:
             for (proto, addr, param) in series_list:
                 if bucket == "raw":
@@ -389,49 +409,93 @@ def export_csv():
                          LIMIT ?
                     """, (rnd, proto, addr, param, t_from, t_to, limit))
                     for r in cur:
-                        yield f'{r["ts"]},{proto},{addr},{param},{r["value"]}\n'
+                        yield _csv_line([r["ts"], proto, addr, param, r["value"]])
                 else:
-                    # 为简洁：CSV 的分桶只实现 avg/min/max（三选一）；last/ohlc 后续如需可扩成 value 或四列
-                    if bucket in _BUCKET_SEC and agg in ("avg", "min", "max"):
+                    if bucket in _BUCKET_SEC:
                         bsec = _BUCKET_SEC[bucket]
-                        sql = f"""
-                        SELECT {_bucket_ts_expr("(strftime('%s', ts)/?)*?")} AS ts,
-                               ROUND({agg}(value), ?) AS value
-                          FROM sensor_data
-                         WHERE protocol=? AND address=? AND parameter=?
-                           AND ts BETWEEN ? AND ?
-                         GROUP BY (strftime('%s', ts)/?)*?
-                         ORDER BY ts ASC
-                         LIMIT ?
-                        """
-                        cur = conn.execute(sql, (bsec, bsec, rnd, proto, addr, param,
-                                                 t_from, t_to, bsec, bsec, limit))
+                        if agg == "last":
+                            sql = f"""
+                            WITH src AS (
+                              SELECT (strftime('%s', ts)/?)*? AS bkt, ts, value
+                                FROM sensor_data
+                               WHERE protocol=? AND address=? AND parameter=?
+                                 AND ts BETWEEN ? AND ?
+                            ),
+                            rnk AS (
+                              SELECT bkt, ts, value,
+                                     ROW_NUMBER() OVER (PARTITION BY bkt ORDER BY ts DESC) rn
+                                FROM src
+                            )
+                            SELECT {_bucket_ts_expr("bkt")} AS ts,
+                                   ROUND(value, ?) AS value
+                              FROM rnk WHERE rn=1
+                             ORDER BY bkt ASC
+                             LIMIT ?
+                            """
+                            cur = conn.execute(sql, (bsec, bsec, proto, addr, param,
+                                                     t_from, t_to, rnd, limit))
+                        else:
+                            sql = f"""
+                            SELECT {_bucket_ts_expr("(strftime('%s', ts)/?)*?")} AS ts,
+                                   ROUND({agg}(value), ?) AS value
+                              FROM sensor_data
+                             WHERE protocol=? AND address=? AND parameter=?
+                               AND ts BETWEEN ? AND ?
+                             GROUP BY (strftime('%s', ts)/?)*?
+                             ORDER BY ts ASC
+                             LIMIT ?
+                            """
+                            cur = conn.execute(sql, (bsec, bsec, rnd, proto, addr, param,
+                                                     t_from, t_to, bsec, bsec, limit))
                         for r in cur:
-                            yield f'{r["ts"]},{proto},{addr},{param},{r["value"]}\n'
-                    elif bucket in _BUCKET_CAL and agg in ("avg", "min", "max"):
+                            yield _csv_line([r["ts"], proto, addr, param, r["value"]])
+                    elif bucket in _BUCKET_CAL:
                         if bucket == "1d":
                             bkt_expr = "datetime(ts,'start of day')"
                         elif bucket == "1w":
                             bkt_expr = "datetime(date(ts,'weekday 1'),'start of day')"
                         else:
                             bkt_expr = "datetime(strftime('%Y-%m-01 00:00:00', ts))"
-                        sql = f"""
-                        SELECT {bkt_expr} AS ts, ROUND({agg}(value), ?) AS value
-                          FROM sensor_data
-                         WHERE protocol=? AND address=? AND parameter=?
-                           AND ts BETWEEN ? AND ?
-                         GROUP BY {bkt_expr}
-                         ORDER BY ts ASC
-                         LIMIT ?
-                        """
-                        cur = conn.execute(sql, (rnd, proto, addr, param, t_from, t_to, limit))
+                        if agg == "last":
+                            sql = f"""
+                            WITH src AS (
+                              SELECT {bkt_expr} AS bkt, ts, value
+                                FROM sensor_data
+                               WHERE protocol=? AND address=? AND parameter=?
+                                 AND ts BETWEEN ? AND ?
+                            ),
+                            rnk AS (
+                              SELECT bkt, ts, value,
+                                     ROW_NUMBER() OVER (PARTITION BY bkt ORDER BY ts DESC) rn
+                                FROM src
+                            )
+                            SELECT bkt AS ts, ROUND(value, ?) AS value
+                              FROM rnk WHERE rn=1
+                             ORDER BY ts ASC
+                             LIMIT ?
+                            """
+                            cur = conn.execute(sql, (proto, addr, param, t_from, t_to, rnd, limit))
+                        else:
+                            sql = f"""
+                            SELECT {bkt_expr} AS ts, ROUND({agg}(value), ?) AS value
+                              FROM sensor_data
+                             WHERE protocol=? AND address=? AND parameter=?
+                               AND ts BETWEEN ? AND ?
+                             GROUP BY {bkt_expr}
+                             ORDER BY ts ASC
+                             LIMIT ?
+                            """
+                            cur = conn.execute(sql, (rnd, proto, addr, param, t_from, t_to, limit))
                         for r in cur:
-                            yield f'{r["ts"]},{proto},{addr},{param},{r["value"]}\n'
-                    else:
-                        # 其他组合暂不导出（避免产生不一致的 CSV 列数）
-                        continue
+                            yield _csv_line([r["ts"], proto, addr, param, r["value"]])
 
     # 文件名：若只导出一个序列，用更具体的；否则使用多序列标记
-    fname = "series.csv" if len(series_list) > 1 else f"{series_list[0][0]}-{series_list[0][1]}-{series_list[0][2]}.csv"
+    if len(series_list) > 1:
+        suffix = bucket if bucket == "raw" else f"{bucket}-{agg}"
+        fname = f"hydrocore-series-{len(series_list)}-{suffix}.csv"
+    else:
+        proto, addr, param = series_list[0]
+        suffix = bucket if bucket == "raw" else f"{bucket}-{agg}"
+        fname = f"{_safe_filename_part(proto)}-{addr}-{_safe_filename_part(param)}-{suffix}.csv"
     return Response(_gen(), mimetype="text/csv",
                     headers={"Content-Disposition": f'attachment; filename="{fname}"'})

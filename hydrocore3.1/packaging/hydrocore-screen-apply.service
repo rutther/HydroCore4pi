@@ -1,0 +1,6 @@
+[Unit]
+Description=Apply HydroCore boot screen direction
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env HYDROCORE_SCREEN_APPLY_NOW=1 /usr/bin/hydrocore-apply-screen-orientation

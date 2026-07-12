@@ -1,0 +1,20 @@
+{
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false,
+  "BackgroundModeEnabled": false,
+  "BrowserAddPersonEnabled": false,
+  "BrowserGuestModeEnabled": false,
+  "BrowserSignin": 0,
+  "DefaultBrowserSettingEnabled": false,
+  "DefaultGeolocationSetting": 2,
+  "DefaultNotificationsSetting": 2,
+  "DeveloperToolsAvailability": 2,
+  "ExtensionInstallBlocklist": ["*"],
+  "MetricsReportingEnabled": false,
+  "PasswordManagerEnabled": false,
+  "PrintingEnabled": false,
+  "PromotionalTabsEnabled": false,
+  "SpellcheckEnabled": false,
+  "SyncDisabled": true,
+  "TranslateEnabled": false
+}

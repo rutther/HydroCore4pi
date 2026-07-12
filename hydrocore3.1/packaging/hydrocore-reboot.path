@@ -1,0 +1,10 @@
+[Unit]
+Description=Watch HydroCore maintenance reboot request
+
+[Path]
+PathChanged=/var/lib/hydrocore/runtime/reboot.request
+PathModified=/var/lib/hydrocore/runtime/reboot.request
+Unit=hydrocore-reboot.service
+
+[Install]
+WantedBy=multi-user.target

@@ -2,21 +2,35 @@
   "id": "rule_ph_high_dose_a",
   "name": "pH 偏高时加药 A",
   "enabled": false,
-  "metric_key": "ph",
+  "metric_key": "pH",
   "signal_protocol": "lanchang_ph",
   "signal_address": 9,
   "signal_parameter": "measurement",
-  "aggregation": "last",
+  "aggregation": "avg",
   "window_sec": 60,
   "operator": ">",
   "threshold": 6.8,
-  "sustain_sec": 30,
+  "sustain_sec": 0,
   "task_id": "task_dose_a_3s",
   "task_name": "加药泵 A 单次加药",
   "cooldown_sec": 600,
   "max_runs_per_hour": 4,
   "requires_fresh_data": true,
-  "description": "示例规则：pH 持续偏高时执行加药。",
+  "description": "示例规则：最近 1 分钟 pH 平均值偏高时执行一次加药。",
+  "condition_logic": "all",
+  "conditions": [
+    {
+      "metric_key": "pH",
+      "signal_protocol": "lanchang_ph",
+      "signal_address": 9,
+      "signal_parameter": "measurement",
+      "aggregation": "avg",
+      "window_sec": 60,
+      "operator": ">",
+      "threshold": 6.8,
+      "requires_fresh_data": true
+    }
+  ],
   "active_days": [
     0,
     1,
@@ -28,5 +42,5 @@
   ],
   "active_start_time": "",
   "active_end_time": "",
-  "summary": "当 lanchang_ph:9:measurement 在最近 60 秒的最新值大于 6.8 并持续 30 秒时，执行 加药泵 A 单次加药"
+  "summary": "当 pH 最近 1 分钟平均值大于 6.8 时，执行 加药泵 A 单次加药"
 }

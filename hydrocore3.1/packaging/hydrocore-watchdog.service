@@ -1,0 +1,7 @@
+[Unit]
+Description=HydroCore HTTP health check
+After=hydrocore.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/hydrocore-watchdog

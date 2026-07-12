@@ -25,7 +25,7 @@ import {
   stopAutomationRuntime,
   triggerActionSchedule
 } from "./api.js";
-import { getAcText } from "./text.js";
+import { getAcText } from "./text.js?v=system-layout-clean-20260711-2";
 
 function $(id) {
   return document.getElementById(id);
@@ -638,7 +638,6 @@ function fillActuatorForm(item) {
   $("acActuatorPwmFrequency").value = data.pwm_frequency ?? 1000;
   $("acActuatorSafeDuty").value = data.safe_duty ?? 0;
   $("acActuatorEnabled").checked = data.enabled !== false;
-  $("acActuatorAllowReal").checked = (data.allow_real_output ?? data.allow_real) === true;
   $("acActuatorDesc").value = data.description || "";
   syncActuatorKindVisibility();
 }
@@ -654,7 +653,7 @@ function readActuatorForm() {
     pwm_frequency: Number($("acActuatorPwmFrequency").value || 1000),
     safe_duty: Number($("acActuatorSafeDuty").value || 0),
     enabled: $("acActuatorEnabled").checked,
-    allow_real_output: $("acActuatorAllowReal").checked,
+    allow_real_output: true,
     description: $("acActuatorDesc").value.trim()
   };
 }
@@ -667,7 +666,6 @@ function fillActionUnitForm(item) {
   $("acUnitOutputId").value = data.output_id || "";
   $("acUnitMode").value = data.mode || "relay_pulse";
   $("acUnitEnabled").checked = data.enabled !== false;
-  $("acUnitDryRun").checked = true;
   $("acUnitDesc").value = data.description || "";
   const params = data.params || {};
   $("acUnitDurationMs").value = secondsInputFromMs(params.duration_ms, 3000);
@@ -747,8 +745,6 @@ function renderActuatorInsights(item) {
   const linkedTaskNames = Array.from(new Set(
     unitRefs.flatMap((unit) => tasksUsingUnit(unit.id).map((task) => task.name || task.id))
   ));
-  const realAllowed = (draft.allow_real_output ?? draft.allow_real) === true;
-
   setText("acActuatorTypeHint", actuatorTypeHint(kind));
   setText("acActuatorSummary", actuatorSummary(draft));
   setHtml("acActuatorWiring", isZhLang()
@@ -756,13 +752,13 @@ function renderActuatorInsights(item) {
       <div>当前接线</div>
       <strong>GPIO ${escapeHtml(draft.gpio_pin ?? draft.pin ?? "-")}</strong>
       <div>${escapeHtml(kind === "pwm" ? "PWM 输出" : "继电器输出")}</div>
-      <div>${escapeHtml(realAllowed ? "允许人工真实测试" : "默认只做模拟测试")}</div>
+      <div>${escapeHtml(draft.enabled === false ? "当前已停用" : "执行动作时会真实控制设备")}</div>
     `
     : `
       <div>Current mapping</div>
       <strong>GPIO ${escapeHtml(draft.gpio_pin ?? draft.pin ?? "-")}</strong>
       <div>${escapeHtml(kind === "pwm" ? "PWM output" : "Relay output")}</div>
-      <div>${escapeHtml(realAllowed ? "Manual live tests allowed" : "Manual tests stay simulated")}</div>
+      <div>${escapeHtml(draft.enabled === false ? "Disabled" : "Actions drive the real device")}</div>
     `);
   setHtml("acActuatorImpact", isZhLang()
     ? `
@@ -780,7 +776,6 @@ function renderActionUnitInsights(item) {
   const summary = actionUnitSummary(draft) || getAcText().unit.summaryPlaceholder;
   const output = findActuator(draft.output_id);
   const usedByTasks = tasksUsingUnit(draft.id);
-  const dryRun = $("acUnitDryRun")?.checked !== false;
 
   setText("acUnitSummary", summary);
   setText("acUnitModeHint", actionUnitModeHint($("acUnitMode")?.value || ""));
@@ -805,8 +800,8 @@ function renderActionUnitInsights(item) {
       <div>${escapeHtml(usedByTasks.map((task) => task.name || task.id).join(", ") || "After saving, plans can call it directly.")}</div>
     `);
   setHtml("acUnitNote", isZhLang()
-    ? `<div>${dryRun ? "现在执行时只记录结果，不会真的控制设备。" : "现在执行会真实控制设备，请先确认现场安全。"}</div>`
-    : `<div>${dryRun ? "Run Once will only record the result without driving hardware." : "Run Once will drive the real device. Confirm site safety first."}</div>`);
+    ? `<div>点击“执行一次”会立即控制目标设备。</div>`
+    : `<div>Run Once immediately drives the target device.</div>`);
 }
 
 function ensureTaskDraftShape() {
@@ -1227,7 +1222,7 @@ export function bindRuntimePanels() {
     const eventName = el.tagName === "SELECT" ? "onchange" : "oninput";
     el[eventName] = () => renderActuatorInsights(readActuatorForm());
   });
-  ["acActuatorEnabled", "acActuatorAllowReal"].forEach((id) => {
+  ["acActuatorEnabled"].forEach((id) => {
     const el = $(id);
     if (el) el.onchange = () => renderActuatorInsights(readActuatorForm());
   });
@@ -1258,10 +1253,6 @@ export function bindRuntimePanels() {
     $("btnAcActuatorSave").onclick = async () => {
       try {
         const draft = readActuatorForm();
-        const previous = findActuator(draft.id);
-        if (draft.allow_real_output && previous?.allow_real_output !== true) {
-          if (!window.confirm(uiCommonText().confirmRealOutput)) return;
-        }
         const res = await saveActuator(draft);
         AC_STATE.selectedActuatorId = res.item.id;
         AC_STATE.draftActuatorReturnId = "";
@@ -1304,7 +1295,7 @@ export function bindRuntimePanels() {
     const el = $(id);
     if (el) el.oninput = renderActionUnitSummary;
   });
-  ["acUnitEnabled", "acUnitDryRun"].forEach((id) => {
+  ["acUnitEnabled"].forEach((id) => {
     const el = $(id);
     if (el) el.onchange = renderActionUnitSummary;
   });
@@ -1363,12 +1354,16 @@ export function bindRuntimePanels() {
     $("btnAcUnitExecute").onclick = async () => {
       const id = $("acUnitId").value.trim();
       if (!id) return;
-      const dryRun = $("acUnitDryRun").checked;
-      if (!dryRun && !window.confirm(getAcText().common.confirmRealOutput)) return;
+      if (!window.confirm(getAcText().common.confirmRealOutput)) return;
       try {
-        setText("acUnitStatus", dryRun ? uiCommonText().runningDry : uiCommonText().runningLive);
-        const res = await executeActionUnit(id, { dryRun, source: "manual" });
-        setText("acUnitStatus", `${logMessageLabel(res.message)} | ${uiCommonText().logId} #${res.log_id}`);
+        setText("acUnitStatus", uiCommonText().runningLive);
+        const res = await executeActionUnit(id, { dryRun: false, source: "manual", asyncRun: true });
+        if (res.job_id) {
+          setText("acUnitStatus", `${isZhLang() ? "已开始后台执行" : "Started in background"} | Job #${res.job_id}`);
+          setTimeout(() => refreshActionRuntime("unit").catch(() => {}), 1200);
+        } else {
+          setText("acUnitStatus", `${logMessageLabel(res.message)} | ${uiCommonText().logId} #${res.log_id}`);
+        }
       } catch (error) {
         setText("acUnitStatus", error.message || String(error));
       }

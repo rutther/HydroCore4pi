@@ -55,6 +55,12 @@ export async function stopAutomationRuntime() {
   }));
 }
 
+export async function stopAllOutputs() {
+  return parseJsonResponse(await fetch("/api/v1/actions/output/stop-all", {
+    method: "POST"
+  }));
+}
+
 export async function saveAutomationConfig(item) {
   return parseJsonResponse(await fetch("/api/v1/actions/automation/config", {
     method: "PUT",
@@ -99,11 +105,11 @@ export async function deleteActionUnit(id) {
   }));
 }
 
-export async function executeActionUnit(id, { dryRun = true, source = "manual" } = {}) {
+export async function executeActionUnit(id, { dryRun = false, source = "manual", asyncRun = false } = {}) {
   return parseJsonResponse(await fetch(`/api/v1/actions/units/${encodeURIComponent(id)}/execute`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dry_run: dryRun, source })
+    body: JSON.stringify({ dry_run: dryRun, source, async: asyncRun })
   }));
 }
 
@@ -125,11 +131,11 @@ export async function deleteActionTask(id) {
   }));
 }
 
-export async function executeActionTask(id, { dryRun = true, source = "manual" } = {}) {
+export async function executeActionTask(id, { dryRun = false, source = "manual", asyncRun = false } = {}) {
   return parseJsonResponse(await fetch(`/api/v1/actions/tasks/${encodeURIComponent(id)}/execute`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dry_run: dryRun, source })
+    body: JSON.stringify({ dry_run: dryRun, source, async: asyncRun })
   }));
 }
 
@@ -151,11 +157,11 @@ export async function deleteActionRule(id) {
   }));
 }
 
-export async function evaluateActionRule(id, { dryRun = true, executeIfMatch = false } = {}) {
+export async function evaluateActionRule(id, { dryRun = true, executeIfMatch = false, asyncRun = false } = {}) {
   return parseJsonResponse(await fetch(`/api/v1/actions/rules/${encodeURIComponent(id)}/evaluate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dry_run: dryRun, execute_if_match: executeIfMatch })
+    body: JSON.stringify({ dry_run: dryRun, execute_if_match: executeIfMatch, async: asyncRun })
   }));
 }
 
@@ -177,11 +183,11 @@ export async function deleteActionSchedule(id) {
   }));
 }
 
-export async function triggerActionSchedule(id, { dryRun = true } = {}) {
+export async function triggerActionSchedule(id, { dryRun = false, asyncRun = false } = {}) {
   return parseJsonResponse(await fetch(`/api/v1/actions/schedules/${encodeURIComponent(id)}/trigger`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dry_run: dryRun })
+    body: JSON.stringify({ dry_run: dryRun, async: asyncRun })
   }));
 }
 

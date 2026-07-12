@@ -3,9 +3,15 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
   <title>HydroCore · 数据仪表</title>
-  <link rel="stylesheet" href="/ui/lab/css/dashboard.css?v=dashboard-calendar-lineicon-10" />
+  <link rel="icon" href="data:," />
+  <script>
+    const params = new URLSearchParams(location.search);
+    document.documentElement.dataset.shellMode = params.get("shellMode") || "";
+    document.documentElement.lang = params.get("lang") === "en-US" ? "en-US" : "zh-CN";
+  </script>
+  <link rel="stylesheet" href="/ui/lab/css/dashboard.css?v=task-plan-final-20260711-5" />
 </head>
 
 <body>
@@ -44,7 +50,7 @@
           <div class="controls">
 
             <!-- 第1行：模式（最近/回放），两颗可展开药丸，互斥 -->
-            <div class="controls-row mode-row" id="modeSwitch">
+            <div class="controls-row mode-row mode-recent" id="modeSwitch">
 
               <!-- 最近：默认展开 -->
               <div class="mode-pill active" id="pillRecent">
@@ -121,8 +127,11 @@
             <div class="controls-row action-row">
               <button class="btn" id="btnRefresh" type="button">刷新</button>
               <button class="btn" id="btnExport" type="button">导出CSV</button>
+              <button class="btn" id="btnRangePick" type="button">选区</button>
               <button class="btn" id="btnFullscreen" type="button">全屏</button>
-              <div style="flex:1;"></div>
+            </div>
+
+            <div class="controls-row dashboard-status-row">
               <div class="freshness" id="freshnessStatus">--</div>
               <div class="mini" id="chartStatus">--</div>
             </div>
@@ -141,6 +150,7 @@
   </div>
 
   <script src="/ui/lab/lib/echarts.min.js"></script>
-  <script type="module" src="/ui/lab/js/dashboard.js?v=dashboard-calendar-lineicon-10"></script>
+  <script type="module" src="/ui/lab/js/dashboard.js?v=task-plan-final-20260711-5"></script>
 </body>
 </html>
+

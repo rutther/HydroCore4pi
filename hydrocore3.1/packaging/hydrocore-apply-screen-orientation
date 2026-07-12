@@ -1,0 +1,334 @@
+#!/bin/sh
+set -eu
+
+CONFIG="${HYDROCORE_SCREEN_CONFIG:-/var/lib/hydrocore/runtime/screen.json}"
+STATUS_FILE="${HYDROCORE_SCREEN_STATUS_FILE:-/var/lib/hydrocore/runtime/screen_apply_status.json}"
+ACTIVE_FILE="${HYDROCORE_SCREEN_ACTIVE_FILE:-/var/lib/hydrocore/runtime/screen_active.json}"
+ACTIVE_ENV="${HYDROCORE_SCREEN_ACTIVE_ENV:-/var/lib/hydrocore/runtime/screen_kiosk.env}"
+CMDLINE="${HYDROCORE_BOOT_CMDLINE:-/boot/firmware/cmdline.txt}"
+RULE_FILE="${HYDROCORE_TOUCH_RULE_FILE:-/etc/udev/rules.d/99-hydrocore-touchscreen-orientation.rules}"
+ORIENTATION="${HYDROCORE_SCREEN_ORIENTATION:-}"
+OUTPUT="${HYDROCORE_SCREEN_OUTPUT:-}"
+MODE="${HYDROCORE_SCREEN_MODE:-}"
+ACTIVATE="${HYDROCORE_SCREEN_ACTIVATE:-0}"
+APPLY_NOW="${HYDROCORE_SCREEN_APPLY_NOW:-0}"
+
+if [ -z "$ORIENTATION" ] && [ -r "$CONFIG" ]; then
+  ORIENTATION="$(/usr/bin/python3 - "$CONFIG" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1], "r", encoding="utf-8") as fh:
+        data = json.load(fh)
+    print(str(data.get("orientation") or "normal"))
+except Exception:
+    print("normal")
+PY
+)"
+fi
+
+case "${ORIENTATION:-normal}" in
+  normal)
+    ROTATION="0"
+    TRANSFORM="normal"
+    MATRIX=""
+    ;;
+  left)
+    ROTATION="90"
+    TRANSFORM="90"
+    MATRIX="0 -1 1 1 0 0"
+    ;;
+  inverted)
+    ROTATION="180"
+    TRANSFORM="180"
+    MATRIX="-1 0 1 0 -1 1"
+    ;;
+  right)
+    ROTATION="270"
+    TRANSFORM="270"
+    MATRIX="0 1 0 -1 0 1"
+    ;;
+  *)
+    echo "Unsupported screen orientation: $ORIENTATION" >&2
+    exit 2
+    ;;
+esac
+
+if [ "$(id -u)" != "0" ]; then
+  echo "screen orientation boot configuration requires root; skipped" >&2
+  exit 0
+fi
+
+find_dsi_output() {
+  for item in /sys/class/drm/card*-DSI-*; do
+    [ -e "$item" ] || continue
+    [ -f "$item/status" ] || continue
+    [ "$(cat "$item/status")" = "connected" ] || continue
+    basename "$item" | sed 's/^card[0-9]*-//'
+    return 0
+  done
+  printf '%s\n' "DSI-1"
+}
+
+find_mode() {
+  for item in /sys/class/drm/card*-"$OUTPUT"; do
+    [ -e "$item" ] || continue
+    [ -f "$item/modes" ] || continue
+    head -n 1 "$item/modes"
+    return 0
+  done
+  printf '%s\n' "800x1280"
+}
+
+find_touch_name() {
+  grep -h -i -m1 'Goodix.*TouchScreen\|TouchScreen\|touch' /sys/class/input/event*/device/name 2>/dev/null || true
+}
+
+touch_matrix_is_active() {
+  expected="$1"
+  [ -n "$expected" ] || return 0
+  for event in /dev/input/event*; do
+    [ -e "$event" ] || continue
+    props="$(udevadm info -q property -n "$event" 2>/dev/null || true)"
+    printf '%s\n' "$props" | grep -q '^ID_INPUT_TOUCHSCREEN=1$' || continue
+    printf '%s\n' "$props" | grep -F -q "LIBINPUT_CALIBRATION_MATRIX=$expected" && return 0
+  done
+  return 1
+}
+
+active_orientation() {
+  if [ -r "$ACTIVE_FILE" ]; then
+    /usr/bin/python3 - "$ACTIVE_FILE" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1], "r", encoding="utf-8") as fh:
+        data = json.load(fh)
+    print(str(data.get("orientation") or "normal"))
+except Exception:
+    print("normal")
+PY
+  else
+    printf '%s\n' "normal"
+  fi
+}
+
+backup_once() {
+  path="$1"
+  [ -f "$path" ] || return 0
+  stamp="$(date +%Y%m%d%H%M%S)"
+  cp -a "$path" "$path.hydrocore.$stamp.bak"
+}
+
+write_json_status() {
+  path="$1"
+  state="$2"
+  active="$3"
+  message="$4"
+  requires_reboot="${5:-1}"
+  applied_to="${6:-boot_config}"
+  mkdir -p "$(dirname "$path")"
+  /usr/bin/python3 - "$path" "$ORIENTATION" "$OUTPUT" "$MODE_SPEC" "$ROTATION" "$TRANSFORM" "$state" "$active" "$message" "$requires_reboot" "$applied_to" <<'PY'
+import datetime
+import json
+import sys
+
+path, orientation, output, mode, rotation, transform, state, active, message, requires_reboot, applied_to = sys.argv[1:12]
+payload = {
+    "orientation": orientation,
+    "output": output,
+    "mode": mode,
+    "rotation": int(rotation),
+    "transform": transform,
+    "state": state,
+    "active": active == "1",
+    "message": message,
+    "requires_reboot": requires_reboot == "1",
+    "applied_to": applied_to,
+    "updated_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+}
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump(payload, fh, ensure_ascii=False, indent=2)
+    fh.write("\n")
+PY
+}
+
+write_active_files() {
+  mkdir -p "$(dirname "$ACTIVE_FILE")"
+  /usr/bin/python3 - "$ACTIVE_FILE" "$ORIENTATION" "$OUTPUT" "$MODE_SPEC" "$ROTATION" "$TRANSFORM" <<'PY'
+import datetime
+import json
+import sys
+
+path, orientation, output, mode, rotation, transform = sys.argv[1:7]
+payload = {
+    "orientation": orientation,
+    "output": output,
+    "mode": mode,
+    "rotation": int(rotation),
+    "transform": transform,
+    "updated_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+}
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump(payload, fh, ensure_ascii=False, indent=2)
+    fh.write("\n")
+PY
+  cat > "$ACTIVE_ENV" <<EOF
+HYDROCORE_SCREEN_ORIENTATION=$ORIENTATION
+HYDROCORE_SCREEN_OUTPUT=$OUTPUT
+HYDROCORE_SCREEN_TRANSFORM=$TRANSFORM
+EOF
+  chown hydrocore:hydrocore "$ACTIVE_FILE" "$ACTIVE_ENV" 2>/dev/null || true
+}
+
+reload_touch_rules() {
+  udevadm control --reload-rules 2>/dev/null || true
+  udevadm trigger --subsystem-match=input --action=change 2>/dev/null || true
+  udevadm settle --timeout=5 2>/dev/null || true
+}
+
+restart_kiosk() {
+  systemctl restart hydrocore-kiosk.service
+}
+
+apply_runtime_orientation() {
+  prev_active="$(mktemp)"
+  prev_env="$(mktemp)"
+  had_active=0
+  had_env=0
+
+  if [ -f "$ACTIVE_FILE" ]; then
+    cp -a "$ACTIVE_FILE" "$prev_active"
+    had_active=1
+  fi
+  if [ -f "$ACTIVE_ENV" ]; then
+    cp -a "$ACTIVE_ENV" "$prev_env"
+    had_env=1
+  fi
+
+  reload_touch_rules
+  if ! touch_matrix_is_active "$MATRIX"; then
+    rm -f "$prev_active" "$prev_env"
+    write_json_status "$STATUS_FILE" "pending_reboot" "0" "touch calibration did not update at runtime; reboot required" "1" "boot_config"
+    echo "HydroCore screen orientation saved; touch calibration needs reboot"
+    return 0
+  fi
+
+  write_active_files
+  if restart_kiosk; then
+    rm -f "$prev_active" "$prev_env"
+    write_json_status "$STATUS_FILE" "active" "1" "screen orientation applied to the local display and saved for boot" "0" "runtime_and_boot_config"
+    echo "HydroCore screen orientation applied to local display"
+    return 0
+  fi
+
+  if [ "$had_active" = "1" ]; then
+    cp -a "$prev_active" "$ACTIVE_FILE"
+  else
+    rm -f "$ACTIVE_FILE"
+  fi
+  if [ "$had_env" = "1" ]; then
+    cp -a "$prev_env" "$ACTIVE_ENV"
+  else
+    rm -f "$ACTIVE_ENV"
+  fi
+  rm -f "$prev_active" "$prev_env"
+  write_json_status "$STATUS_FILE" "pending_reboot" "0" "local display restart failed; reboot required" "1" "boot_config"
+  echo "HydroCore screen orientation saved; kiosk restart failed, reboot required" >&2
+  return 1
+}
+
+if [ -z "$OUTPUT" ]; then
+  OUTPUT="$(find_dsi_output)"
+fi
+
+if [ -z "$MODE" ]; then
+  MODE="$(find_mode)"
+fi
+
+case "$MODE" in
+  *@*|*e|*M)
+    MODE_SPEC="$MODE"
+    ;;
+  *)
+    MODE_SPEC="${MODE}@60"
+    ;;
+esac
+
+if [ -f "$CMDLINE" ]; then
+  current="$(cat "$CMDLINE")"
+  next=""
+  for token in $current; do
+    case "$token" in
+      video="$OUTPUT":*)
+        ;;
+      *)
+        next="${next:+$next }$token"
+        ;;
+    esac
+  done
+  if [ "$ROTATION" != "0" ]; then
+    next="${next:+$next }video=$OUTPUT:$MODE_SPEC,rotate=$ROTATION"
+  fi
+  if [ "$next" != "$current" ]; then
+    backup_once "$CMDLINE"
+    printf '%s\n' "$next" > "$CMDLINE"
+  fi
+fi
+
+touch_name="${HYDROCORE_TOUCH_NAME:-}"
+if [ -z "$touch_name" ]; then
+  touch_name="$(find_touch_name)"
+fi
+mkdir -p "$(dirname "$RULE_FILE")"
+backup_once "$RULE_FILE"
+
+if [ -n "$touch_name" ]; then
+  escaped_name="$(printf '%s' "$touch_name" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  if [ -n "$MATRIX" ]; then
+    cat > "$RULE_FILE" <<EOF
+# Generated by HydroCore. Applied on next boot for the built-in touchscreen.
+ACTION=="add|change", SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="$escaped_name", ENV{WL_OUTPUT}="$OUTPUT", ENV{LIBINPUT_CALIBRATION_MATRIX}="$MATRIX"
+EOF
+  else
+    cat > "$RULE_FILE" <<EOF
+# Generated by HydroCore. Applied on next boot for the built-in touchscreen.
+ACTION=="add|change", SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="$escaped_name", ENV{WL_OUTPUT}="$OUTPUT"
+EOF
+  fi
+else
+  if [ -n "$MATRIX" ]; then
+    cat > "$RULE_FILE" <<EOF
+# Generated by HydroCore. Applied on next boot for touchscreens.
+ACTION=="add|change", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_TOUCHSCREEN}=="1", ENV{WL_OUTPUT}="$OUTPUT", ENV{LIBINPUT_CALIBRATION_MATRIX}="$MATRIX"
+EOF
+  else
+    cat > "$RULE_FILE" <<EOF
+# Generated by HydroCore. Applied on next boot for touchscreens.
+ACTION=="add|change", SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT_TOUCHSCREEN}=="1", ENV{WL_OUTPUT}="$OUTPUT"
+EOF
+  fi
+fi
+
+if [ "$ACTIVATE" = "1" ]; then
+  if touch_matrix_is_active "$MATRIX"; then
+    write_active_files
+    write_json_status "$STATUS_FILE" "active" "1" "screen orientation active for this boot" "0" "boot_config"
+    echo "HydroCore screen orientation active for this boot"
+  else
+    write_json_status "$STATUS_FILE" "pending_reboot" "0" "touch calibration is not active yet; keeping previous kiosk direction" "1" "boot_config"
+    echo "HydroCore screen orientation pending reboot; touch calibration not active yet"
+  fi
+elif [ "$APPLY_NOW" = "1" ]; then
+  apply_runtime_orientation
+else
+  if [ "$(active_orientation)" = "$ORIENTATION" ]; then
+    write_json_status "$STATUS_FILE" "active" "1" "boot configuration already matches this boot" "0" "boot_config"
+    echo "HydroCore screen orientation already active for this boot"
+  else
+    write_json_status "$STATUS_FILE" "pending_reboot" "0" "boot configuration written; reboot required" "1" "boot_config"
+    echo "HydroCore screen orientation written to boot configuration; reboot required"
+  fi
+fi

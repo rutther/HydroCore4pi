@@ -1,0 +1,72 @@
+#!/bin/sh
+set -eu
+
+REPO="${HYDROCORE_OFFLINE_DEBS_DIR:-/opt/hydrocore/offline-debs}"
+STATE="${HYDROCORE_OFFLINE_APT_STATE:-/var/lib/hydrocore/offline-apt}"
+LOG="${HYDROCORE_OFFLINE_DEPS_LOG:-/var/log/hydrocore/kiosk-deps-install.log}"
+SELFTEST_JSON="/var/lib/hydrocore/runtime/kiosk-deps-selfcheck.json"
+SELFTEST_ERR="/var/lib/hydrocore/runtime/kiosk-deps-selfcheck.err"
+
+install -d -m 0750 -o hydrocore -g hydrocore /var/lib/hydrocore/runtime 2>/dev/null || true
+install -d -m 0750 -o hydrocore -g hydrocore /var/log/hydrocore 2>/dev/null || true
+exec >>"$LOG" 2>&1
+
+echo "[$(date -Is)] HydroCore kiosk dependency install started"
+
+if [ ! -d "$REPO" ] || { [ ! -s "$REPO/Packages" ] && [ ! -s "$REPO/Packages.gz" ]; }; then
+  echo "No bundled offline repo at $REPO; skipping kiosk dependency install."
+  exit 0
+fi
+
+if ! command -v apt-get >/dev/null 2>&1; then
+  echo "apt-get is missing; cannot install bundled kiosk dependencies." >&2
+  exit 1
+fi
+
+install -d -m 0755 "$STATE" "$STATE/sourceparts" "$STATE/trusted.gpg.d" "$STATE/lists/partial" "$STATE/cache/archives/partial"
+printf 'deb [trusted=yes] file:%s ./\n' "$REPO" > "$STATE/sources.list"
+
+apt_offline() {
+  DEBIAN_FRONTEND=noninteractive apt-get \
+    -o "Dir::Etc::sourcelist=$STATE/sources.list" \
+    -o "Dir::Etc::sourceparts=$STATE/sourceparts" \
+    -o "Dir::Etc::trustedparts=$STATE/trusted.gpg.d" \
+    -o "Dir::State::lists=$STATE/lists" \
+    -o "Dir::Cache=$STATE/cache" \
+    -o "APT::Get::List-Cleanup=0" \
+    "$@"
+}
+
+apt_offline update
+
+attempt=1
+while :; do
+  if apt_offline -y --no-install-recommends \
+    -o Dpkg::Options::=--force-confdef \
+    -o Dpkg::Options::=--force-confold \
+    install chromium labwc cage squeekboard wlr-randr; then
+    break
+  fi
+  if [ "$attempt" -ge 60 ]; then
+    echo "apt could not install kiosk dependencies after $attempt attempts." >&2
+    exit 1
+  fi
+  echo "apt install attempt $attempt failed, likely waiting for dpkg lock; retrying in 5 seconds."
+  attempt=$((attempt + 1))
+  sleep 5
+done
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl daemon-reload || true
+  systemctl enable hydrocore-kiosk.service || true
+  systemctl restart hydrocore-kiosk.service || systemctl start hydrocore-kiosk.service || true
+fi
+
+if command -v hydrocore-selfcheck >/dev/null 2>&1; then
+  hydrocore-selfcheck --json --strict-kiosk >"$SELFTEST_JSON" 2>"$SELFTEST_ERR" || true
+  chown hydrocore:hydrocore "$SELFTEST_JSON" "$SELFTEST_ERR" 2>/dev/null || true
+fi
+
+date -Is > /var/lib/hydrocore/runtime/kiosk-deps-installed-at
+chown hydrocore:hydrocore /var/lib/hydrocore/runtime/kiosk-deps-installed-at 2>/dev/null || true
+echo "[$(date -Is)] HydroCore kiosk dependency install finished"

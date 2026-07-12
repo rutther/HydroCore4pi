@@ -8,7 +8,7 @@
     {
       "step_type": "run_action_unit",
       "action_unit_id": "drain_valve_open",
-      "action_unit_name": "Open drain valve"
+      "action_unit_name": "打开排水阀"
     },
     {
       "step_type": "wait",
@@ -17,7 +17,7 @@
     {
       "step_type": "run_action_unit",
       "action_unit_id": "drain_valve_close",
-      "action_unit_name": "Close drain valve"
+      "action_unit_name": "关闭排水阀"
     }
   ],
   "summary": "打开排水阀，等待 20 秒后关闭",

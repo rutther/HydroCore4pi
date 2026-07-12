@@ -1,0 +1,187 @@
+#!/bin/sh
+set -eu
+
+ENV_FILE=/etc/hydrocore/hydrocore.env
+if [ -r "$ENV_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+fi
+
+APP_DIR="${HYDROCORE_APP_DIR:-/opt/hydrocore}"
+VENDOR_PYTHON="${HYDROCORE_VENDOR_PYTHON:-$APP_DIR/vendor/python}"
+VENDOR_LIB="${HYDROCORE_VENDOR_LIB:-$APP_DIR/vendor/lib}"
+export PYTHONPATH="$APP_DIR:$VENDOR_PYTHON${PYTHONPATH:+:$PYTHONPATH}"
+export LD_LIBRARY_PATH="$VENDOR_LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+exec /usr/bin/python3 - "$@" <<'PY'
+import argparse
+import importlib
+import json
+import os
+import pathlib
+import shutil
+import socket
+import subprocess
+import sys
+import time
+import urllib.request
+
+
+def command_exists(name):
+    return shutil.which(name) is not None
+
+
+def run_text(argv, timeout=3):
+    try:
+        result = subprocess.run(argv, check=False, capture_output=True, text=True, timeout=timeout)
+        return result.returncode, (result.stdout or result.stderr or "").strip()
+    except Exception as exc:
+        return 127, str(exc)
+
+
+def path_status(path):
+    try:
+        return path.exists(), ""
+    except Exception as exc:
+        return False, repr(exc)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--no-http", action="store_true")
+    parser.add_argument("--strict-kiosk", action="store_true")
+    parser.add_argument("--install", action="store_true")
+    args = parser.parse_args()
+
+    app_dir = pathlib.Path(os.environ.get("HYDROCORE_APP_DIR", "/opt/hydrocore"))
+    data_dir = pathlib.Path(os.environ.get("HYDROCORE_DATA_DIR", "/var/lib/hydrocore"))
+    defaults_dir = pathlib.Path(os.environ.get("HYDROCORE_DEFAULTS_DIR", "/usr/share/hydrocore/defaults"))
+    config_dir = pathlib.Path(os.environ.get("HYDROCORE_CONFIG_DIR", "/etc/hydrocore"))
+    offline_debs_dir = pathlib.Path(os.environ.get("HYDROCORE_OFFLINE_DEBS_DIR", "/opt/hydrocore/offline-debs"))
+    port = str(os.environ.get("HYDROCORE_PORT", "5000"))
+    checks = []
+
+    def add(name, ok, severity="critical", detail=""):
+        checks.append({
+            "name": name,
+            "ok": bool(ok),
+            "severity": severity,
+            "detail": str(detail or ""),
+        })
+
+    add("architecture", os.uname().machine in {"aarch64", "arm64"}, "critical", os.uname().machine)
+    add("python", sys.version_info[:2] >= (3, 11), "critical", sys.version.split()[0])
+
+    for name in ["flask", "serial", "gunicorn", "gpiozero", "lgpio", "_lgpio"]:
+        try:
+            module = importlib.import_module(name)
+            add(f"python:{name}", True, "critical", getattr(module, "__file__", "built-in"))
+        except Exception as exc:
+            add(f"python:{name}", False, "critical", repr(exc))
+
+    for path in [
+        app_dir / "backend" / "app.py",
+        app_dir / "backend" / "schema.sql",
+        app_dir / "ui" / "index.html",
+        app_dir / "ui" / "lab" / "dashboard.html",
+        app_dir / "protocols",
+        app_dir / "vendor" / "python",
+        app_dir / "vendor" / "lib" / "liblgpio.so.1",
+        pathlib.Path("/usr/bin/hydrocore-kiosk-deps-install"),
+        defaults_dir,
+        config_dir / "hydrocore.env",
+    ]:
+        ok, detail = path_status(path)
+        add(f"path:{path}", ok, "critical", detail)
+
+    for path in [
+        data_dir,
+        data_dir / "db",
+        data_dir / "logs",
+        data_dir / "runtime",
+        data_dir / "action_profiles",
+        data_dir / "actuators",
+        data_dir / "action_units",
+        data_dir / "action_tasks",
+    ]:
+        ok, detail = path_status(path)
+        severity = "critical" if os.geteuid() == 0 else "warning"
+        add(f"data:{path}", ok, severity, detail)
+
+    try:
+        probe = data_dir / "runtime" / ".selfcheck-write"
+        probe.parent.mkdir(parents=True, exist_ok=True)
+        probe.write_text(str(time.time()), encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        add("data:writable", True, "critical", str(data_dir))
+    except Exception as exc:
+        severity = "critical" if os.geteuid() == 0 else "warning"
+        add("data:writable", False, severity, repr(exc))
+
+    try:
+        from backend.services.gpio_driver import inspect_gpio_environment
+        env = inspect_gpio_environment()
+        add("gpio:backend", bool(env.get("available")), "critical", json.dumps(env, ensure_ascii=False))
+        add("gpio:pwm", bool(env.get("pwm")), "critical", json.dumps(env, ensure_ascii=False))
+    except Exception as exc:
+        add("gpio:backend", False, "critical", repr(exc))
+
+    if command_exists("systemctl"):
+        for unit in ["hydrocore.service", "hydrocore-watchdog.timer"]:
+            rc, text = run_text(["systemctl", "is-enabled", unit])
+            add(f"systemd:{unit}:enabled", rc == 0 and text in {"enabled", "static", "indirect", "generated"}, "critical", text)
+            rc, text = run_text(["systemctl", "is-active", unit])
+            add(f"systemd:{unit}:active", text == "active", "critical", text)
+        rc, text = run_text(["systemctl", "is-enabled", "hydrocore-kiosk.service"])
+        add("systemd:hydrocore-kiosk.service:enabled", rc == 0 and text in {"enabled", "static", "indirect", "generated"}, "warning", text)
+        rc, text = run_text(["systemctl", "is-active", "hydrocore-kiosk.service"])
+        add("systemd:hydrocore-kiosk.service:active", text == "active", "warning", text)
+        rc, text = run_text(["systemctl", "is-enabled", "hydrocore-kiosk-deps.service"])
+        add("systemd:hydrocore-kiosk-deps.service:enabled", rc == 0 and text in {"enabled", "static", "indirect", "generated"}, "warning", text)
+
+    packages_index = offline_debs_dir / "Packages"
+    packages_index_gz = offline_debs_dir / "Packages.gz"
+    try:
+        deb_count = len(list(offline_debs_dir.glob("*.deb"))) if offline_debs_dir.exists() else 0
+        repo_ok = deb_count > 0 and (packages_index.exists() or packages_index_gz.exists())
+        add("offline:kiosk-deb-repo", repo_ok, "warning", f"{deb_count} deb files in {offline_debs_dir}")
+    except Exception as exc:
+        add("offline:kiosk-deb-repo", False, "warning", repr(exc))
+
+    kiosk_severity = "critical" if args.strict_kiosk else "warning"
+    add("kiosk:chromium", command_exists("chromium") or command_exists("chromium-browser"), kiosk_severity)
+    add("kiosk:compositor", command_exists("labwc") or command_exists("cage"), kiosk_severity)
+    add("kiosk:keyboard", command_exists(os.environ.get("HYDROCORE_OSK_COMMAND", "squeekboard")), "warning")
+    add("kiosk:wlr-randr", command_exists("wlr-randr"), "warning")
+
+    if not args.no_http:
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/v1/system/status", timeout=5) as response:
+                body = response.read(4096)
+                ok = response.status == 200 and b'"ok":true' in body.replace(b" ", b"")
+                add("http:system-status", ok, "critical", f"status={response.status}")
+        except Exception as exc:
+            add("http:system-status", False, "critical", repr(exc))
+
+    summary = {
+        "ok": not any((not item["ok"]) and item["severity"] == "critical" for item in checks),
+        "host": socket.gethostname(),
+        "checks": checks,
+    }
+
+    if args.json:
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
+    else:
+        print("HydroCore self-check:", "OK" if summary["ok"] else "FAILED")
+        for item in checks:
+            mark = "OK" if item["ok"] else ("WARN" if item["severity"] == "warning" else "FAIL")
+            detail = f" - {item['detail']}" if item["detail"] else ""
+            print(f"[{mark}] {item['name']}{detail}")
+
+    return 0 if summary["ok"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+PY

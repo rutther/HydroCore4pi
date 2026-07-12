@@ -19,9 +19,9 @@ from .action_store import (
 
 AUTOMATION_FILE = settings.DATA_DIR / "automation" / "runtime.json"
 DEFAULT_AUTOMATION_CONFIG = {
-    "automation_enabled": False,
-    "dry_run": True,
-    "hardware_armed": False,
+    "automation_enabled": True,
+    "dry_run": False,
+    "hardware_armed": True,
     "tick_sec": 2,
     "fresh_data_sec": 180,
 }
@@ -67,9 +67,11 @@ def normalize_automation_config(data: Dict[str, Any]) -> Dict[str, Any]:
     item.update(data or {})
     tick_sec = int(item.get("tick_sec", 2))
     fresh_data_sec = int(item.get("fresh_data_sec", 180))
-    item["automation_enabled"] = bool(item.get("automation_enabled", False))
-    item["dry_run"] = bool(item.get("dry_run", True))
-    item["hardware_armed"] = bool(item.get("hardware_armed", False))
+    # A plan's own enabled flag is the product-level execution switch.
+    # Keep the legacy fields fixed for compatibility with older API clients.
+    item["automation_enabled"] = True
+    item["dry_run"] = False
+    item["hardware_armed"] = True
     item["tick_sec"] = min(max(tick_sec, 1), 60)
     item["fresh_data_sec"] = min(max(fresh_data_sec, 10), 3600)
     return item
@@ -119,11 +121,11 @@ def _count_success_since(source: str, since_ts: str) -> int:
     return int(row["n"]) if row else 0
 
 
-def _series_window_stats(rule: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    window_sec = int(rule.get("window_sec", 60))
-    protocol = str(rule.get("signal_protocol") or "").strip()
-    address = int(rule.get("signal_address", 0))
-    parameter = str(rule.get("signal_parameter") or "").strip()
+def _series_window_stats(source: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    window_sec = int(source.get("window_sec", 60))
+    protocol = str(source.get("signal_protocol") or "").strip()
+    address = int(source.get("signal_address", 0))
+    parameter = str(source.get("signal_parameter") or "").strip()
     if not protocol or not parameter:
         return None
 
@@ -177,6 +179,184 @@ def _series_window_stats(rule: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     }
 
 
+def _series_bucket_stats(source: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    bucket_sec = int(source.get("bucket_sec") or 0)
+    bucket_count = int(source.get("bucket_count") or 1)
+    if bucket_sec <= 0:
+        return None
+
+    bucket_agg = str(source.get("bucket_agg") or source.get("aggregation") or "avg").strip().lower()
+    if bucket_agg not in ("last", "avg", "min", "max"):
+        bucket_agg = "avg"
+    protocol = str(source.get("signal_protocol") or "").strip()
+    address = int(source.get("signal_address", 0))
+    parameter = str(source.get("signal_parameter") or "").strip()
+    if not protocol or not parameter:
+        return None
+
+    # Add one extra bucket of lookback so a just-started current bucket can still
+    # be evaluated without dropping the previous complete bucket from the query.
+    window_sec = bucket_sec * bucket_count + bucket_sec
+    with get_conn() as conn:
+        since_row = conn.execute(
+            "SELECT strftime('%Y-%m-%d %H:%M:%S', 'now', 'localtime', ?)",
+            (f"-{window_sec} seconds",),
+        ).fetchone()
+        since_ts = str(since_row[0])
+        if bucket_agg == "last":
+            rows = conn.execute(
+                """
+                WITH grouped AS (
+                  SELECT (CAST(strftime('%s', ts) AS INTEGER) / ?) * ? AS bkt,
+                         MAX(ts) AS latest_ts
+                    FROM sensor_data
+                   WHERE protocol = ? AND address = ? AND parameter = ?
+                     AND ts >= ?
+                   GROUP BY bkt
+                )
+                SELECT grouped.bkt AS bkt, grouped.latest_ts AS latest_ts, d.value AS value, 1 AS n
+                  FROM grouped
+                  JOIN sensor_data d
+                    ON d.protocol = ? AND d.address = ? AND d.parameter = ?
+                   AND d.ts = grouped.latest_ts
+                 ORDER BY grouped.bkt DESC
+                 LIMIT ?
+                """,
+                (
+                    bucket_sec,
+                    bucket_sec,
+                    protocol,
+                    address,
+                    parameter,
+                    since_ts,
+                    protocol,
+                    address,
+                    parameter,
+                    bucket_count,
+                ),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                f"""
+                SELECT (CAST(strftime('%s', ts) AS INTEGER) / ?) * ? AS bkt,
+                       MAX(ts) AS latest_ts,
+                       {bucket_agg}(value) AS value,
+                       COUNT(1) AS n
+                  FROM sensor_data
+                 WHERE protocol = ? AND address = ? AND parameter = ?
+                   AND ts >= ?
+                 GROUP BY bkt
+                 ORDER BY bkt DESC
+                 LIMIT ?
+                """,
+                (bucket_sec, bucket_sec, protocol, address, parameter, since_ts, bucket_count),
+            ).fetchall()
+
+    if not rows:
+        return None
+
+    buckets = []
+    for row in rows:
+        bucket_ts = datetime.datetime.fromtimestamp(int(row["bkt"]))
+        latest_ts = _parse_runtime_ts(str(row["latest_ts"]))
+        value = row["value"]
+        buckets.append({
+            "bucket_ts": bucket_ts,
+            "latest_ts": latest_ts,
+            "value": value,
+            "points": int(row["n"] or 0),
+        })
+
+    newest = buckets[0]
+    values = [item["value"] for item in buckets if item["value"] is not None]
+    latest_ts_values = [item["latest_ts"] for item in buckets if item.get("latest_ts")]
+    latest_ts = max(latest_ts_values) if latest_ts_values else None
+    return {
+        "latest_ts": latest_ts,
+        "latest_value": newest.get("value"),
+        "avg_value": sum(values) / len(values) if values else None,
+        "min_value": min(values) if values else None,
+        "max_value": max(values) if values else None,
+        "points": sum(int(item.get("points") or 0) for item in buckets),
+        "bucket_sec": bucket_sec,
+        "bucket_count": bucket_count,
+        "bucket_agg": bucket_agg,
+        "bucket_values": buckets,
+        "matched_bucket_count": len(buckets),
+    }
+
+
+def _condition_stats(condition: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    if int(condition.get("bucket_sec") or 0) > 0:
+        return _series_bucket_stats(condition)
+    return _series_window_stats(condition)
+
+
+def _rule_conditions(rule: Dict[str, Any]) -> List[Dict[str, Any]]:
+    raw = rule.get("conditions")
+    if isinstance(raw, list) and raw:
+        return [dict(item or {}) for item in raw if isinstance(item, dict)]
+    bucket_sec = int(rule.get("bucket_sec") or 0)
+    bucket_count = int(rule.get("bucket_count") or 1)
+    return [{
+        "metric_key": rule.get("metric_key") or rule.get("signal_parameter") or "",
+        "signal_protocol": rule.get("signal_protocol") or "",
+        "signal_address": rule.get("signal_address", 0),
+        "signal_parameter": rule.get("signal_parameter") or "",
+        "aggregation": rule.get("aggregation") or "last",
+        "window_sec": rule.get("window_sec", 60),
+        "bucket_sec": bucket_sec,
+        "bucket_count": bucket_count,
+        "bucket_agg": rule.get("bucket_agg") or rule.get("aggregation") or "last",
+        "pass_mode": rule.get("pass_mode") or ("all" if bucket_sec > 0 and bucket_count > 1 else "latest"),
+        "operator": rule.get("operator") or "",
+        "threshold": rule.get("threshold", 0),
+        "requires_fresh_data": rule.get("requires_fresh_data", True),
+    }]
+
+
+def _condition_value(condition: Dict[str, Any], stats: Optional[Dict[str, Any]]) -> Optional[float]:
+    if not stats:
+        return None
+    bucket_sec = int(condition.get("bucket_sec") or 0)
+    if bucket_sec > 0:
+        return stats.get("latest_value")
+    aggregation = str(condition.get("aggregation") or "last")
+    if aggregation == "avg":
+        return stats.get("avg_value")
+    if aggregation == "min":
+        return stats.get("min_value")
+    if aggregation == "max":
+        return stats.get("max_value")
+    return stats.get("latest_value")
+
+
+def _condition_match(condition: Dict[str, Any], stats: Optional[Dict[str, Any]]) -> bool:
+    if not stats:
+        return False
+    operator = str(condition.get("operator") or "")
+    threshold = float(condition.get("threshold", 0))
+    bucket_sec = int(condition.get("bucket_sec") or 0)
+    if bucket_sec <= 0:
+        return _compare_value(_condition_value(condition, stats), operator, threshold)
+
+    buckets = list(stats.get("bucket_values") or [])
+    if not buckets:
+        return False
+    bucket_count = int(condition.get("bucket_count") or 1)
+    pass_mode = str(condition.get("pass_mode") or ("all" if bucket_count > 1 else "latest"))
+    checks = [
+        _compare_value(item.get("value"), operator, threshold)
+        for item in buckets
+        if item.get("value") is not None
+    ]
+    if pass_mode == "all":
+        return len(checks) >= bucket_count and all(checks[:bucket_count])
+    if pass_mode == "any":
+        return any(checks[:bucket_count])
+    return bool(checks and checks[0])
+
+
 def _compare_value(value: Optional[float], operator: str, threshold: float) -> bool:
     if value is None:
         return False
@@ -188,6 +368,19 @@ def _compare_value(value: Optional[float], operator: str, threshold: float) -> b
         return value < threshold
     if operator == "<=":
         return value <= threshold
+    return False
+
+
+def _condition_sustain_ready(item: Dict[str, Any]) -> bool:
+    """Use the strongest window proof for legacy sustain rules."""
+    condition = item.get("condition") or {}
+    stats = item.get("stats") or {}
+    operator = str(condition.get("operator") or "")
+    threshold = float(condition.get("threshold", 0))
+    if operator in (">", ">="):
+        return _compare_value(stats.get("min_value"), operator, threshold)
+    if operator in ("<", "<="):
+        return _compare_value(stats.get("max_value"), operator, threshold)
     return False
 
 
@@ -321,30 +514,69 @@ def preview_action_schedule(schedule: Dict[str, Any], now: Optional[datetime.dat
 
 def preview_action_rule(rule: Dict[str, Any], now: Optional[datetime.datetime] = None) -> Dict[str, Any]:
     now = now or _now()
-    stats = _series_window_stats(rule)
     freshness_sec_limit = load_automation_config().get("fresh_data_sec", 180)
-    latest_ts = stats.get("latest_ts") if stats else None
-    freshness_sec = (now - latest_ts).total_seconds() if latest_ts else None
-    fresh_ok = bool(latest_ts and freshness_sec is not None and freshness_sec <= freshness_sec_limit) if rule.get("requires_fresh_data", True) else True
-    aggregation = str(rule.get("aggregation") or "last")
-    current_value = None
-    if stats:
-        if aggregation == "avg":
-            current_value = stats.get("avg_value")
-        elif aggregation == "min":
-            current_value = stats.get("min_value")
-        elif aggregation == "max":
-            current_value = stats.get("max_value")
-        else:
-            current_value = stats.get("latest_value")
-    matched_now = _compare_value(current_value, str(rule.get("operator") or ""), float(rule.get("threshold", 0)))
     sustain_sec = int(rule.get("sustain_sec", 0))
+    condition_results: List[Dict[str, Any]] = []
+    for condition in _rule_conditions(rule):
+        stats_source = dict(condition)
+        if (
+            int(condition.get("bucket_sec") or 0) <= 0
+            and sustain_sec > 0
+            and str(condition.get("aggregation") or "last") == "last"
+        ):
+            stats_source["window_sec"] = max(1, sustain_sec)
+        stats = _condition_stats(stats_source)
+        latest_ts = stats.get("latest_ts") if stats else None
+        freshness_sec = (now - latest_ts).total_seconds() if latest_ts else None
+        requires_fresh = bool(condition.get("requires_fresh_data", True))
+        fresh_ok = bool(latest_ts and freshness_sec is not None and freshness_sec <= freshness_sec_limit) if requires_fresh else True
+        current_value = _condition_value(condition, stats)
+        matched = _condition_match(condition, stats)
+        bucket_values = list((stats or {}).get("bucket_values") or [])
+        condition_results.append({
+            "condition": condition,
+            "stats": {
+                "latest_ts": _format_dt(latest_ts),
+                "latest_value": stats.get("latest_value") if stats else None,
+                "avg_value": stats.get("avg_value") if stats else None,
+                "min_value": stats.get("min_value") if stats else None,
+                "max_value": stats.get("max_value") if stats else None,
+                "points": stats.get("points") if stats else 0,
+                "bucket_sec": stats.get("bucket_sec") if stats else None,
+                "bucket_count": stats.get("bucket_count") if stats else None,
+                "bucket_agg": stats.get("bucket_agg") if stats else None,
+                "matched_bucket_count": stats.get("matched_bucket_count") if stats else 0,
+                "bucket_values": [
+                    {
+                        "bucket_ts": _format_dt(item.get("bucket_ts")),
+                        "latest_ts": _format_dt(item.get("latest_ts")),
+                        "value": item.get("value"),
+                        "points": item.get("points"),
+                    }
+                    for item in bucket_values[:20]
+                ],
+            },
+            "current_value": current_value,
+            "matched": matched,
+            "fresh_ok": fresh_ok,
+            "freshness_sec": freshness_sec,
+            "freshness_limit_sec": freshness_sec_limit,
+        })
+
+    first_result = condition_results[0] if condition_results else {}
+    stats = first_result.get("stats") or {}
+    current_value = first_result.get("current_value")
+    matched_now = bool(condition_results) and all(bool(item["matched"]) for item in condition_results)
+    fresh_ok = bool(condition_results) and all(bool(item["fresh_ok"]) for item in condition_results)
+    freshness_values = [
+        item.get("freshness_sec")
+        for item in condition_results
+        if item.get("freshness_sec") is not None
+    ]
+    freshness_sec = max(freshness_values) if freshness_values else None
     sustain_ready = sustain_sec <= 0
     if matched_now and sustain_sec > 0:
-        if aggregation == "min" and str(rule.get("operator")) in (">", ">="):
-            sustain_ready = True
-        elif aggregation == "max" and str(rule.get("operator")) in ("<", "<="):
-            sustain_ready = True
+        sustain_ready = all(_condition_sustain_ready(item) for item in condition_results)
     source = f"rule:{rule['id']}"
     last_log = _latest_log_for_source(source)
     last_success_ts = _parse_runtime_ts(last_log["ts"]) if last_log and last_log.get("status") == "success" else None
@@ -363,14 +595,10 @@ def preview_action_rule(rule: Dict[str, Any], now: Optional[datetime.datetime] =
     active_window = _active_window_info(rule, now)
 
     return {
-        "stats": {
-            "latest_ts": _format_dt(latest_ts),
-            "latest_value": stats.get("latest_value") if stats else None,
-            "avg_value": stats.get("avg_value") if stats else None,
-            "min_value": stats.get("min_value") if stats else None,
-            "max_value": stats.get("max_value") if stats else None,
-            "points": stats.get("points") if stats else 0,
-        },
+        "stats": stats,
+        "conditions": condition_results,
+        "condition_count": len(condition_results),
+        "matched_count": sum(1 for item in condition_results if item["matched"]),
         "current_value": current_value,
         "matched_now": matched_now,
         "fresh_ok": fresh_ok,
@@ -391,6 +619,7 @@ def preview_action_rule(rule: Dict[str, Any], now: Optional[datetime.datetime] =
 def evaluate_action_rule(rule_id: str, dry_run: bool = True, execute_if_match: bool = False) -> Dict[str, Any]:
     rule = get_action_rule(rule_id)
     preview = preview_action_rule(rule)
+    condition_results = list(preview.get("conditions", []))
     matched = bool(preview["matched_now"])
     can_fire = bool(preview["would_fire_now"])
     reason = ""
@@ -399,7 +628,7 @@ def evaluate_action_rule(rule_id: str, dry_run: bool = True, execute_if_match: b
         reason = "Rule is disabled"
     elif not preview["active_window"]["active_now"]:
         reason = "Outside active window"
-    elif not preview["stats"]["latest_ts"]:
+    elif any(not ((item.get("stats") or {}).get("latest_ts")) for item in condition_results):
         reason = "No sensor data available"
     elif not preview["fresh_ok"]:
         reason = "Sensor data is stale"
@@ -418,6 +647,9 @@ def evaluate_action_rule(rule_id: str, dry_run: bool = True, execute_if_match: b
         "ok": True,
         "rule": rule,
         "stats": preview["stats"],
+        "conditions": preview.get("conditions", []),
+        "condition_count": preview.get("condition_count", 0),
+        "matched_count": preview.get("matched_count", 0),
         "matched": matched,
         "sustained": bool(preview["sustain_ready"]),
         "can_fire": can_fire,
@@ -436,7 +668,7 @@ def evaluate_action_rule(rule_id: str, dry_run: bool = True, execute_if_match: b
         "message": reason,
     }
 
-    if execute_if_match and matched and preview["fresh_ok"]:
+    if execute_if_match and can_fire:
         task_result = execute_action_task(
             rule["task_id"],
             source=f"rule-test:{rule['id']}",
@@ -564,28 +796,27 @@ class ActionAutomationThread(threading.Thread):
         execute_action_task(
             schedule["task_id"],
             source=f"schedule:{schedule['id']}",
-            dry_run=bool(config.get("dry_run", True)),
+            dry_run=False,
         )
 
-    def _rule_value(self, rule: Dict[str, Any]) -> Optional[float]:
-        stats = _series_window_stats(rule)
-        if not stats:
-            return None
-        if rule.get("requires_fresh_data", True):
-            latest_ts = stats.get("latest_ts")
-            if not latest_ts:
-                return None
-            freshness_sec = load_automation_config().get("fresh_data_sec", 180)
-            if (_now() - latest_ts).total_seconds() > freshness_sec:
-                return None
-        aggregation = str(rule.get("aggregation") or "last")
-        if aggregation == "avg":
-            return stats.get("avg_value")
-        if aggregation == "min":
-            return stats.get("min_value")
-        if aggregation == "max":
-            return stats.get("max_value")
-        return stats.get("latest_value")
+    def _rule_conditions_match(self, rule: Dict[str, Any]) -> bool:
+        freshness_sec = load_automation_config().get("fresh_data_sec", 180)
+        conditions = _rule_conditions(rule)
+        if not conditions:
+            return False
+        for condition in conditions:
+            stats = _condition_stats(condition)
+            if not stats:
+                return False
+            if condition.get("requires_fresh_data", True):
+                latest_ts = stats.get("latest_ts")
+                if not latest_ts:
+                    return False
+                if (_now() - latest_ts).total_seconds() > freshness_sec:
+                    return False
+            if not _condition_match(condition, stats):
+                return False
+        return True
 
     def _rule_can_fire(self, rule: Dict[str, Any], now: datetime.datetime) -> bool:
         if not _is_in_active_window(rule, now):
@@ -614,9 +845,20 @@ class ActionAutomationThread(threading.Thread):
             self._rule_holds.pop(rule["id"], None)
             return
 
-        value = self._rule_value(rule)
-        if not _compare_value(value, str(rule.get("operator") or ""), float(rule.get("threshold", 0))):
+        if not self._rule_conditions_match(rule):
             self._rule_holds.pop(rule["id"], None)
+            return
+
+        sustain_sec = int(rule.get("sustain_sec", 0))
+        if sustain_sec <= 0:
+            if not self._rule_can_fire(rule, now):
+                return
+            execute_action_task(
+                rule["task_id"],
+                source=f"rule:{rule['id']}",
+                dry_run=False,
+            )
+            self._rule_holds[rule["id"]] = now
             return
 
         hold_since = self._rule_holds.get(rule["id"])
@@ -624,7 +866,6 @@ class ActionAutomationThread(threading.Thread):
             self._rule_holds[rule["id"]] = now
             return
 
-        sustain_sec = int(rule.get("sustain_sec", 0))
         held_sec = (now - hold_since).total_seconds()
         if held_sec < sustain_sec:
             return
@@ -635,7 +876,7 @@ class ActionAutomationThread(threading.Thread):
         execute_action_task(
             rule["task_id"],
             source=f"rule:{rule['id']}",
-            dry_run=bool(config.get("dry_run", True)),
+            dry_run=False,
         )
         self._rule_holds[rule["id"]] = now
 
@@ -644,11 +885,10 @@ class ActionAutomationThread(threading.Thread):
             config = load_automation_config()
             try:
                 now = _now()
-                if config.get("automation_enabled", False):
-                    for schedule in list_action_schedules():
-                        self._maybe_run_schedule(schedule, config, now)
-                    for rule in list_action_rules():
-                        self._maybe_run_rule(rule, config, now)
+                for schedule in list_action_schedules():
+                    self._maybe_run_schedule(schedule, config, now)
+                for rule in list_action_rules():
+                    self._maybe_run_rule(rule, config, now)
                 self._set_tick()
             except Exception as exc:
                 self._set_error(str(exc))

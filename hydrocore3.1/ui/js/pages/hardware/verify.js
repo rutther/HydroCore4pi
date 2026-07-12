@@ -206,8 +206,8 @@ function renderAddrPills() {
     btn.type = "button";
     btn.className = "pill";
     btn.style.cursor = "pointer";
-    btn.style.border = "1px solid rgba(0,255,0,0.9)";
-    btn.style.background = (V.selectedAddr === a) ? "var(--green2)" : "transparent";
+    btn.style.border = "1px solid var(--accent-focus)";
+    btn.style.background = (V.selectedAddr === a) ? "var(--accent-fill)" : "transparent";
     btn.textContent = String(a);
 
     btn.onclick = () => {
@@ -485,7 +485,7 @@ function buildRowDom(addr, index, pObj) {
 //   const badge = document.createElement("div");
 //   badge.className = "pill";
 //   badge.style.background = "transparent";
-//   badge.style.border = "1px solid rgba(0,255,0,0.55)";
+//   badge.style.border = "1px solid var(--accent-line-strong)";
 //   badge.style.color = "rgba(255,255,255,0.9)";
 //   badge.style.height = "34px";
 //   badge.style.fontSize = "14px";

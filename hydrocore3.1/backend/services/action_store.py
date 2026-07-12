@@ -167,6 +167,16 @@ def save_actuator(data: Dict[str, Any]) -> Dict[str, Any]:
     if normalized["gpio_pin"] < 0 or normalized["gpio_pin"] > 40:
         raise ValueError("gpio_pin must be between 0 and 40")
 
+    for existing in list_actuators():
+        if existing.get("id") == item_id:
+            continue
+        try:
+            existing_pin = int(existing.get("gpio_pin", existing.get("pin", -1)))
+        except Exception:
+            continue
+        if existing_pin == normalized["gpio_pin"]:
+            raise ValueError(f"GPIO {normalized['gpio_pin']} is already used by output: {existing.get('id')}")
+
     if kind == "relay":
         active_level = str(item.get("active_level") or "low").strip()
         safe_state = str(item.get("safe_state") or "off").strip()
@@ -258,18 +268,19 @@ def action_unit_summary(item: Dict[str, Any]) -> str:
     params = item.get("params") or {}
     output_name = item.get("output_name") or item.get("output_id") or "-"
     if mode == "relay_pulse":
-        return f"{output_name} run {int(params.get('duration_ms', 0) / 1000)}s"
+        return f"{output_name} 运行 {int(params.get('duration_ms', 0) / 1000)} 秒"
     if mode == "relay_state":
-        return f"{output_name} -> {params.get('command', '-')}"
+        command = "打开" if params.get("command") == "on" else "关闭"
+        return f"{output_name} {command}"
     if mode == "relay_pattern":
         total_s = int(params.get("total_duration_ms", 0) / 1000)
         cycle_s = int(params.get("cycle_ms", 0) / 1000)
         on_s = int(params.get("on_duration_ms", 0) / 1000)
-        return f"{output_name} pulse {on_s}s/{cycle_s}s for {total_s}s"
+        return f"{output_name} 每 {cycle_s} 秒运行 {on_s} 秒，共 {total_s} 秒"
     if mode == "pwm_run":
         duty = params.get("duty_percent", 0)
         duration_s = int(params.get("duration_ms", 0) / 1000)
-        return f"{output_name} PWM {duty}% for {duration_s}s"
+        return f"{output_name} PWM {duty}% 运行 {duration_s} 秒"
     return str(item.get("description") or "").strip()
 
 
@@ -332,7 +343,7 @@ def task_summary(item: Dict[str, Any]) -> str:
         if step.get("step_type") == "run_action_unit":
             parts.append(str(step.get("action_unit_name") or step.get("action_unit_id") or "-"))
         elif step.get("step_type") == "wait":
-            parts.append(f"wait {int(step.get('duration_ms', 0) / 1000)}s")
+            parts.append(f"等待 {int(step.get('duration_ms', 0) / 1000)} 秒")
     return " -> ".join(parts) if parts else "-"
 
 
@@ -400,30 +411,166 @@ def _normalize_aggregation(raw: Any) -> str:
     return aggregation
 
 
+def _legacy_condition_from_rule(item: Dict[str, Any]) -> Dict[str, Any]:
+    bucket_sec = int(item.get("bucket_sec") or 0)
+    bucket_count = int(item.get("bucket_count") or 1)
+    pass_mode = str(
+        item.get("pass_mode") or ("all" if bucket_sec > 0 and bucket_count > 1 else "latest")
+    ).strip().lower()
+    return {
+        "metric_key": str(item.get("metric_key") or item.get("signal_parameter") or "").strip(),
+        "signal_protocol": str(item.get("signal_protocol") or "").strip(),
+        "signal_address": int(item.get("signal_address", 0)),
+        "signal_parameter": str(item.get("signal_parameter") or item.get("metric_key") or "").strip(),
+        "aggregation": str(item.get("aggregation") or "last").strip().lower(),
+        "window_sec": int(item.get("window_sec", 60)),
+        "bucket_sec": bucket_sec,
+        "bucket_count": bucket_count,
+        "bucket_agg": str(item.get("bucket_agg") or item.get("aggregation") or "last").strip().lower(),
+        "pass_mode": pass_mode,
+        "operator": str(item.get("operator") or "").strip(),
+        "threshold": item.get("threshold"),
+        "requires_fresh_data": _as_bool(item.get("requires_fresh_data"), True),
+    }
+
+
+def _rule_conditions(item: Dict[str, Any]) -> List[Dict[str, Any]]:
+    raw_conditions = item.get("conditions")
+    if isinstance(raw_conditions, list) and raw_conditions:
+        return [dict(cond or {}) for cond in raw_conditions if isinstance(cond, dict)]
+    return [_legacy_condition_from_rule(item)]
+
+
+def _normalize_rule_condition(raw: Dict[str, Any], index: int) -> Dict[str, Any]:
+    item = dict(raw or {})
+    signal_protocol = str(item.get("signal_protocol") or "").strip()
+    signal_address = int(item.get("signal_address", 0))
+    signal_parameter = str(item.get("signal_parameter") or item.get("metric_key") or "").strip()
+    aggregation = _normalize_aggregation(item.get("aggregation"))
+    window_sec = int(item.get("window_sec", 60))
+    bucket_sec = int(item.get("bucket_sec") or 0)
+    bucket_count = int(item.get("bucket_count") or 1)
+    bucket_agg = _normalize_aggregation(item.get("bucket_agg") or aggregation)
+    pass_mode = str(
+        item.get("pass_mode") or ("all" if bucket_sec > 0 and bucket_count > 1 else "latest")
+    ).strip().lower()
+
+    if window_sec < 1 or window_sec > 86400:
+        raise ValueError(f"condition {index + 1}: window_sec must be between 1 and 86400")
+    if bucket_sec < 0 or bucket_sec > 86400:
+        raise ValueError(f"condition {index + 1}: bucket_sec must be between 0 and 86400")
+    if bucket_sec > 0 and bucket_sec < 1:
+        raise ValueError(f"condition {index + 1}: bucket_sec must be positive")
+    if bucket_count < 1 or bucket_count > 1440:
+        raise ValueError(f"condition {index + 1}: bucket_count must be between 1 and 1440")
+    if bucket_sec > 0 and bucket_sec * bucket_count > 86400:
+        raise ValueError(f"condition {index + 1}: bucket range must not exceed 24 hours")
+    if pass_mode not in ("latest", "all", "any"):
+        raise ValueError(f"condition {index + 1}: pass_mode must be latest, all or any")
+    if not signal_protocol:
+        raise ValueError(f"condition {index + 1}: signal_protocol is required")
+    if signal_address < 0 or signal_address > 255:
+        raise ValueError(f"condition {index + 1}: signal_address must be between 0 and 255")
+    if not signal_parameter:
+        raise ValueError(f"condition {index + 1}: signal_parameter is required")
+    _require_plan_signal(signal_protocol, signal_address, signal_parameter)
+
+    metric_key = str(item.get("metric_key") or signal_parameter).strip()
+    return {
+        "metric_key": metric_key,
+        "signal_protocol": signal_protocol,
+        "signal_address": signal_address,
+        "signal_parameter": signal_parameter,
+        "aggregation": aggregation,
+        "window_sec": window_sec,
+        "bucket_sec": bucket_sec,
+        "bucket_count": bucket_count,
+        "bucket_agg": bucket_agg,
+        "pass_mode": pass_mode,
+        "operator": _normalize_operator(item.get("operator")),
+        "threshold": float(item.get("threshold")),
+        "requires_fresh_data": _as_bool(item.get("requires_fresh_data"), True),
+    }
+
+
+def _format_seconds_zh(seconds: int) -> str:
+    value = int(seconds or 0)
+    if value > 0 and value % 3600 == 0:
+        return f"{value // 3600} 小时"
+    if value > 0 and value % 60 == 0:
+        return f"{value // 60} 分钟"
+    return f"{value} 秒"
+
+
+def _metric_label(value: Any) -> str:
+    raw = str(value or "").strip()
+    known = {
+        "ph": "pH",
+        "ec": "电导率",
+        "ec_value": "电导率",
+        "resistivity": "电阻率",
+        "resistivity_value": "电阻率",
+        "tds": "TDS",
+        "tds_value": "TDS",
+        "salinity": "盐度",
+        "temperature": "温度",
+        "current_output": "电流输出",
+        "corrosion_rate": "腐蚀率",
+        "mv_value": "电位",
+        "offset": "偏移量",
+        "measurement": "pH",
+        "warning": "报警",
+    }
+    return known.get(raw.lower(), raw or "-")
+
+
 def rule_summary(item: Dict[str, Any]) -> str:
-    operator = item.get("operator") or "-"
-    threshold = item.get("threshold")
     sustain_sec = int(item.get("sustain_sec", 0))
     task_name = item.get("task_name") or item.get("task_id") or "-"
-    protocol = item.get("signal_protocol") or "-"
-    address = item.get("signal_address")
-    parameter = item.get("signal_parameter") or item.get("metric_key") or "-"
-    aggregation = item.get("aggregation") or "last"
-    agg_text = {
-        "last": "最新值",
-        "avg": "平均值",
-        "min": "最小值",
-        "max": "最大值",
-    }.get(str(aggregation), str(aggregation))
-    op_text = {
-        ">": "大于",
-        ">=": "大于等于",
-        "<": "小于",
-        "<=": "小于等于",
-    }.get(str(operator), str(operator))
-    window_sec = int(item.get("window_sec", 60))
-    target = f"{protocol}:{address}:{parameter}"
-    return f"当 {target} 在最近 {window_sec} 秒的{agg_text}{op_text} {threshold} 并持续 {sustain_sec} 秒时，执行 {task_name}"
+    parts: List[str] = []
+    for cond in _rule_conditions(item):
+        operator = cond.get("operator") or "-"
+        threshold = cond.get("threshold")
+        protocol = cond.get("signal_protocol") or "-"
+        address = cond.get("signal_address")
+        parameter = cond.get("signal_parameter") or cond.get("metric_key") or "-"
+        aggregation = cond.get("aggregation") or "last"
+        bucket_sec = int(cond.get("bucket_sec") or 0)
+        bucket_count = int(cond.get("bucket_count") or 1)
+        bucket_agg = cond.get("bucket_agg") or aggregation
+        pass_mode = cond.get("pass_mode") or ("all" if bucket_sec > 0 and bucket_count > 1 else "latest")
+        agg_text = {
+            "last": "最近入库值",
+            "avg": "平均值",
+            "min": "最小值",
+            "max": "最大值",
+        }.get(str(aggregation), str(aggregation))
+        op_text = {
+            ">": "大于",
+            ">=": "大于等于",
+            "<": "小于",
+            "<=": "小于等于",
+        }.get(str(operator), str(operator))
+        window_sec = int(cond.get("window_sec", 60))
+        metric_key = str(cond.get("metric_key") or "").strip()
+        target = _metric_label(metric_key or parameter) if (metric_key or parameter) else f"{protocol}@{address}:{parameter}"
+        if bucket_sec > 0:
+            if str(pass_mode) == "all" and bucket_count > 1:
+                point_text = f"，连续 {bucket_count} 次"
+            elif str(pass_mode) == "any" and bucket_count > 1:
+                point_text = f"，最近 {bucket_count} 次任一"
+            else:
+                point_text = ""
+            parts.append(
+                f"{target} {_format_seconds_zh(bucket_sec)}{agg_text}{point_text}{op_text} {threshold}"
+            )
+        elif aggregation == "last":
+            parts.append(f"{target} {agg_text}{op_text} {threshold}")
+        else:
+            parts.append(f"{target} 最近 {_format_seconds_zh(window_sec)}{agg_text}{op_text} {threshold}")
+    condition_text = " 且 ".join(parts) if parts else "-"
+    sustain_text = f" 并连续确认 {_format_seconds_zh(sustain_sec)}" if sustain_sec > 0 else ""
+    return f"当 {condition_text}{sustain_text} 时，执行 {task_name}"
 
 
 def _normalize_active_days(raw: Any) -> List[int]:
@@ -467,11 +614,13 @@ def save_action_rule(data: Dict[str, Any]) -> Dict[str, Any]:
     sustain_sec = int(item.get("sustain_sec", 0))
     cooldown_sec = int(item.get("cooldown_sec", 0))
     max_runs_per_hour = int(item.get("max_runs_per_hour", 0))
-    signal_protocol = str(item.get("signal_protocol") or "").strip()
-    signal_address = int(item.get("signal_address", 0))
-    signal_parameter = str(item.get("signal_parameter") or item.get("metric_key") or "").strip()
-    aggregation = _normalize_aggregation(item.get("aggregation"))
-    window_sec = int(item.get("window_sec", 60))
+    normalized_conditions = [
+        _normalize_rule_condition(cond, index)
+        for index, cond in enumerate(_rule_conditions(item))
+    ]
+    if not normalized_conditions:
+        raise ValueError("at least one condition is required")
+    first_condition = normalized_conditions[0]
 
     if sustain_sec < 0 or sustain_sec > 86400:
         raise ValueError("sustain_sec must be between 0 and 86400")
@@ -479,41 +628,35 @@ def save_action_rule(data: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("cooldown_sec must be between 0 and 86400")
     if max_runs_per_hour < 0 or max_runs_per_hour > 3600:
         raise ValueError("max_runs_per_hour must be between 0 and 3600")
-    if window_sec < 1 or window_sec > 86400:
-        raise ValueError("window_sec must be between 1 and 86400")
-    if not signal_protocol:
-        raise ValueError("signal_protocol is required")
-    if signal_address < 0 or signal_address > 255:
-        raise ValueError("signal_address must be between 0 and 255")
-    if not signal_parameter:
-        raise ValueError("signal_parameter is required")
-    _require_plan_signal(signal_protocol, signal_address, signal_parameter)
 
     normalized = {
         "id": item_id,
         "name": str(item.get("name") or item_id).strip(),
         "enabled": _as_bool(item.get("enabled"), False),
-        "metric_key": str(item.get("metric_key") or "").strip(),
-        "signal_protocol": signal_protocol,
-        "signal_address": signal_address,
-        "signal_parameter": signal_parameter,
-        "aggregation": aggregation,
-        "window_sec": window_sec,
-        "operator": _normalize_operator(item.get("operator")),
-        "threshold": float(item.get("threshold")),
+        "metric_key": first_condition["metric_key"],
+        "signal_protocol": first_condition["signal_protocol"],
+        "signal_address": first_condition["signal_address"],
+        "signal_parameter": first_condition["signal_parameter"],
+        "aggregation": first_condition["aggregation"],
+        "window_sec": first_condition["window_sec"],
+        "bucket_sec": first_condition["bucket_sec"],
+        "bucket_count": first_condition["bucket_count"],
+        "bucket_agg": first_condition["bucket_agg"],
+        "pass_mode": first_condition["pass_mode"],
+        "operator": first_condition["operator"],
+        "threshold": first_condition["threshold"],
+        "requires_fresh_data": first_condition["requires_fresh_data"],
+        "condition_logic": "all",
+        "conditions": normalized_conditions,
         "sustain_sec": sustain_sec,
         "task_id": task_id,
         "task_name": task.get("name", task_id),
         "cooldown_sec": cooldown_sec,
         "max_runs_per_hour": max_runs_per_hour,
-        "requires_fresh_data": _as_bool(item.get("requires_fresh_data"), True),
         "description": str(item.get("description") or "").strip(),
     }
 
     _apply_active_window(item, normalized)
-
-    if not normalized["metric_key"]:
-        normalized["metric_key"] = signal_parameter
 
     normalized["summary"] = rule_summary(normalized)
     _write_json(_path_for(ACTION_RULE_DIR, item_id), normalized)
@@ -531,11 +674,11 @@ def schedule_summary(item: Dict[str, Any]) -> str:
     schedule_type = item.get("schedule_type")
     task_name = item.get("task_name") or item.get("task_id") or "-"
     if schedule_type == "once":
-        return f"Run {task_name} once at {item.get('start_at') or '-'}"
+        return f"{item.get('start_at') or '-'} 执行 {task_name}"
     if schedule_type == "daily":
-        return f"Run {task_name} daily at {item.get('time_of_day') or '-'}"
+        return f"每天 {item.get('time_of_day') or '-'} 执行 {task_name}"
     if schedule_type == "interval":
-        return f"Run {task_name} every {int(item.get('interval_sec', 0) / 60)} min"
+        return f"每隔 {_format_seconds_zh(int(item.get('interval_sec', 0)))} 执行 {task_name}"
     return "-"
 
 
@@ -638,13 +781,13 @@ def list_action_units() -> List[Dict[str, Any]]:
     items = list_items(ACTION_UNIT_DIR)
     for item in items:
         if "mode" in item:
-            item.setdefault("summary", action_unit_summary(item))
+            item["summary"] = action_unit_summary(item)
     return items
 
 
 def get_action_unit(item_id: str) -> Dict[str, Any]:
     item = get_item(ACTION_UNIT_DIR, item_id)
-    item.setdefault("summary", action_unit_summary(item))
+    item["summary"] = action_unit_summary(item)
     return item
 
 
@@ -664,13 +807,13 @@ def list_action_tasks() -> List[Dict[str, Any]]:
     items = list_items(ACTION_TASK_DIR)
     for item in items:
         if "steps" in item:
-            item.setdefault("summary", task_summary(item))
+            item["summary"] = task_summary(item)
     return items
 
 
 def get_action_task(item_id: str) -> Dict[str, Any]:
     item = get_item(ACTION_TASK_DIR, item_id)
-    item.setdefault("summary", task_summary(item))
+    item["summary"] = task_summary(item)
     return item
 
 
@@ -694,13 +837,17 @@ def list_action_rules() -> List[Dict[str, Any]]:
     items = list_items(ACTION_RULE_DIR)
     for item in items:
         if "metric_key" in item:
-            item.setdefault("summary", rule_summary(item))
+            item.setdefault("condition_logic", "all")
+            item.setdefault("conditions", _rule_conditions(item))
+            item["summary"] = rule_summary(item)
     return items
 
 
 def get_action_rule(item_id: str) -> Dict[str, Any]:
     item = get_item(ACTION_RULE_DIR, item_id)
-    item.setdefault("summary", rule_summary(item))
+    item.setdefault("condition_logic", "all")
+    item.setdefault("conditions", _rule_conditions(item))
+    item["summary"] = rule_summary(item)
     return item
 
 
@@ -712,13 +859,13 @@ def list_action_schedules() -> List[Dict[str, Any]]:
     items = list_items(ACTION_SCHEDULE_DIR)
     for item in items:
         if "schedule_type" in item:
-            item.setdefault("summary", schedule_summary(item))
+            item["summary"] = schedule_summary(item)
     return items
 
 
 def get_action_schedule(item_id: str) -> Dict[str, Any]:
     item = get_item(ACTION_SCHEDULE_DIR, item_id)
-    item.setdefault("summary", schedule_summary(item))
+    item["summary"] = schedule_summary(item)
     return item
 
 

@@ -1,0 +1,6 @@
+[Unit]
+Description=Reboot HydroCore device from maintenance UI
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'rm -f /var/lib/hydrocore/runtime/reboot.request; sleep 1; /usr/bin/systemctl reboot'

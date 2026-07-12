@@ -1,4 +1,4 @@
-import { getAcText } from "./text.js";
+import { getAcText } from "./text.js?v=system-layout-clean-20260711-2";
 
 function helpBubble(text) {
   return `
@@ -20,9 +20,6 @@ export function buildActionConfigTemplate() {
           actuator: "输出设备",
           unit: "动作模板"
         },
-        guideTitle: "建议顺序",
-        guideSteps: ["1. 先确认控制板和 GPIO 预设", "2. 再定义输出设备", "3. 最后组合成动作模板"],
-        profileIntro: "先把这套硬件的 GPIO 预设确认下来，后面的输出设备和动作模板都会基于这里。",
         actuator: {
           title: "输出设备",
           new: "新建设备",
@@ -94,9 +91,6 @@ export function buildActionConfigTemplate() {
           actuator: "Outputs",
           unit: "Action Templates"
         },
-        guideTitle: "Recommended Order",
-        guideSteps: ["1. Confirm the board and GPIO preset", "2. Define each output device", "3. Combine them into action templates"],
-        profileIntro: "Confirm the GPIO preset first. Outputs and action templates will follow this hardware definition.",
         actuator: {
           title: "Outputs",
           new: "New Output",
@@ -171,18 +165,9 @@ export function buildActionConfigTemplate() {
         <button class="ac-tab-btn" data-tab="unit" type="button">${copy.tabs.unit}</button>
       </div>
 
-      <div class="ac-guide-strip">
-        <strong>${copy.guideTitle}</strong>
-        <div class="ac-guide-steps">
-          ${copy.guideSteps.map((step) => `<span class="ac-guide-step">${step}</span>`).join("")}
-        </div>
-      </div>
-
       <div class="ac-panels">
         <section class="ac-panel active" data-tab-panel="profile">
           <div class="card">
-            <h3>${copy.tabs.profile}</h3>
-            <div class="ac-inline-note" style="margin-top:10px;">${copy.profileIntro}</div>
             <div class="row ac-toolbar">
               <div class="pill">${tx.profile.type}</div>
               <select id="acProfileType" class="input ac-select"></select>
@@ -267,11 +252,10 @@ export function buildActionConfigTemplate() {
               <section class="ac-form-block">
                 <div class="ac-section-head">
                   <strong>${copy.actuator.safety}</strong>
-                  ${helpBubble(isZh ? "这些开关只影响人工测试和设备异常时的保护策略。" : "These switches affect manual tests and fail-safe behavior only.")}
+                  ${helpBubble(isZh ? "停用后，动作模板和任务计划都不能使用这个设备。" : "When disabled, action templates and plans cannot use this device.")}
                 </div>
                 <div class="ac-toggle-stack">
                   <label class="ac-toggle-row"><span>${copy.actuator.enabled}</span><input id="acActuatorEnabled" type="checkbox" /></label>
-                  <label class="ac-toggle-row"><span>${copy.actuator.allowReal}</span><input id="acActuatorAllowReal" type="checkbox" /></label>
                   <label class="ac-toggle-row" data-kind="relay"><span>${copy.actuator.fallback}</span><input id="acActuatorForceSafe" type="checkbox" checked disabled /></label>
                 </div>
                 <div id="acActuatorTypeHint" class="ac-inline-note"></div>
@@ -381,11 +365,10 @@ export function buildActionConfigTemplate() {
               <section class="ac-form-block">
                 <div class="ac-section-head">
                   <strong>${copy.unit.safety}</strong>
-                  ${helpBubble(isZh ? "这里决定模板是否可用，以及手动测试时要不要真的去控制设备。" : "Choose whether the template is enabled and whether manual tests should drive the real device.")}
+                  ${helpBubble(isZh ? "停用后，这个动作模板不能执行，也不能被任务计划调用。" : "When disabled, this action cannot run or be called by a plan.")}
                 </div>
                 <div class="ac-toggle-stack">
                   <label class="ac-toggle-row"><span>${copy.unit.enabled}</span><input id="acUnitEnabled" type="checkbox" /></label>
-                  <label class="ac-toggle-row"><span>${copy.unit.dryRun}</span><input id="acUnitDryRun" type="checkbox" checked /></label>
                 </div>
               </section>
 
